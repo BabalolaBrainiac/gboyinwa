@@ -1,0 +1,28 @@
+# skip files
+node_modules
+.next
+out
+build
+
+# env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# secrets/creds
+*.key
+*.pem
+credentials*.json
+*service-account*.json
+
+# system
+.DS_Store
+*.log
+
+# tools
+.vercel
+.vscode
+.idea
