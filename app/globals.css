@@ -14,57 +14,50 @@
   body {
     @apply transition-colors duration-300;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bold tracking-tight;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold 
-           bg-brand-green text-white 
-           hover:opacity-90 hover:shadow-lg hover:shadow-brand-green/20
-           active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold bg-brand-green text-white hover:opacity-90 hover:shadow-lg hover:shadow-brand-green/20 active:scale-[0.98] transition-all duration-200;
   }
-  
+
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold 
-           border-2 border-brand-green text-brand-green bg-transparent
-           hover:bg-brand-green hover:text-white
-           active:scale-[0.98] transition-all duration-200;
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold border-2 border-brand-green text-brand-green bg-transparent hover:bg-brand-green hover:text-white active:scale-[0.98] transition-all duration-200;
   }
-  
+
   .dark .btn-primary {
-    @apply bg-brand-yellow text-brand-black 
-           hover:shadow-brand-yellow/20;
+    @apply bg-brand-yellow text-brand-black hover:shadow-brand-yellow/20;
   }
-  
+
   .dark .btn-secondary {
-    @apply border-brand-yellow text-brand-yellow
-           hover:bg-brand-yellow hover:text-brand-black;
+    @apply border-brand-yellow text-brand-yellow hover:bg-brand-yellow hover:text-brand-black;
   }
-  
+
   .card {
-    @apply rounded-2xl border border-brand-green/10 dark:border-brand-yellow/10 
-           bg-white dark:bg-brand-black/50 
-           shadow-sm hover:shadow-md transition-shadow duration-200;
+    @apply rounded-2xl border border-brand-green/10 dark:border-brand-yellow/10 bg-white dark:bg-brand-black/50 shadow-sm hover:shadow-md transition-shadow duration-200;
   }
-  
+
   .card-hover {
-    @apply card hover:border-brand-orange dark:hover:border-brand-yellow 
-           hover:shadow-lg transition-all duration-300;
+    @apply card hover:border-brand-orange dark:hover:border-brand-yellow hover:shadow-lg transition-all duration-300;
   }
-  
+
   .section-padding {
     @apply py-16 md:py-24 px-4;
   }
-  
+
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-green to-brand-orange
-           dark:from-brand-yellow dark:to-brand-orange;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-green to-brand-orange dark:from-brand-yellow dark:to-brand-orange;
   }
-  
+
   .gradient-text-brand {
     @apply bg-clip-text text-transparent bg-gradient-brand;
   }
@@ -74,23 +67,23 @@
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .animate-delay-100 {
     animation-delay: 100ms;
   }
-  
+
   .animate-delay-200 {
     animation-delay: 200ms;
   }
-  
+
   .animate-delay-300 {
     animation-delay: 300ms;
   }
-  
+
   .animate-delay-400 {
     animation-delay: 400ms;
   }
-  
+
   .animate-delay-500 {
     animation-delay: 500ms;
   }
