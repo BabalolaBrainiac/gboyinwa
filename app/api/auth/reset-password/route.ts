@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getServiceClient } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -25,7 +24,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid or expired token' }, { status: 400 });
   }
 
+  // Dynamic import bcrypt to avoid client-side bundling
+  const { default: bcrypt } = await import('bcryptjs');
   const passwordHash = await bcrypt.hash(newPassword, 10);
+  
   await supabase.from('users').update({ password_hash: passwordHash, updated_at: new Date().toISOString() }).eq('id', row.user_id);
   await supabase.from('password_reset_tokens').update({ used_at: new Date().toISOString() }).eq('id', row.id);
 
