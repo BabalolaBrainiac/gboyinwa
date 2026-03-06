@@ -3,7 +3,8 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AnimateIn } from '@/components/animate-in';
 import { getTeamMembers } from '@/lib/team';
-import { Users } from 'lucide-react';
+import { Users, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -90,18 +91,18 @@ export default async function TeamPage() {
       <main className="flex-1 pt-24">
 
         {/* Hero */}
-        <section className="relative py-20 md:py-28 px-5 sm:px-8 overflow-hidden">
-          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-brand-yellow/5 dark:bg-brand-yellow/3 blur-[120px] pointer-events-none" />
+        <section className="relative py-16 md:py-20 px-5 sm:px-8 overflow-hidden">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-brand-yellow/5 dark:bg-brand-yellow/3 blur-[100px] pointer-events-none" />
           <div className="relative max-w-6xl mx-auto text-center">
             <AnimateIn>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-yellow/12 dark:bg-brand-yellow/8 text-brand-green dark:text-brand-yellow text-xs font-bold tracking-widest uppercase mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-yellow/12 dark:bg-brand-yellow/8 text-brand-green dark:text-brand-yellow text-xs font-bold tracking-widest uppercase mb-5">
                 <Users className="w-3.5 h-3.5" />
                 The People Behind the Mission
               </div>
-              <h1 className="text-5xl md:text-7xl font-bold text-brand-green dark:text-brand-yellow mb-5">
+              <h1 className="text-4xl md:text-6xl font-bold text-brand-green dark:text-brand-yellow mb-4">
                 Meet the Team
               </h1>
-              <p className="text-lg text-brand-black/55 dark:text-brand-yellow/55 max-w-xl mx-auto leading-relaxed">
+              <p className="text-base text-brand-black/55 dark:text-brand-yellow/55 max-w-lg mx-auto leading-relaxed">
                 Dedicated professionals working to amplify authentic Nigerian voices and empower
                 the next generation of documentary filmmakers.
               </p>
@@ -110,48 +111,43 @@ export default async function TeamPage() {
         </section>
 
         {/* Team Grid */}
-        <section className="pb-24 px-5 sm:px-8">
+        <section className="pb-16 px-5 sm:px-8">
           <div className="max-w-6xl mx-auto">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {members.map((m, i) => (
                 <AnimateIn key={m.id ?? i} delay={i * 80}>
-                  <div className="group relative rounded-3xl border border-brand-black/8 dark:border-brand-yellow/8 bg-white dark:bg-[#0d0d0d] p-8 text-center overflow-hidden hover:border-brand-green/25 dark:hover:border-brand-yellow/25 hover:shadow-xl hover:shadow-brand-green/6 dark:hover:shadow-brand-yellow/4 transition-all duration-500 h-full flex flex-col items-center">
-
-                    {/* Film sprocket corners */}
-                    <div className="absolute top-4 right-4 opacity-6 group-hover:opacity-18 transition-opacity duration-300">
-                      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <rect x="0" y="0" width="8" height="8" rx="1.5" className="fill-brand-green dark:fill-brand-yellow" fillOpacity="0.4" />
-                        <rect x="20" y="0" width="8" height="8" rx="1.5" className="fill-brand-green dark:fill-brand-yellow" fillOpacity="0.4" />
-                        <rect x="0" y="20" width="8" height="8" rx="1.5" className="fill-brand-green dark:fill-brand-yellow" fillOpacity="0.4" />
-                        <rect x="20" y="20" width="8" height="8" rx="1.5" className="fill-brand-green dark:fill-brand-yellow" fillOpacity="0.4" />
-                      </svg>
-                    </div>
+                  <div className="group relative rounded-2xl glass-card p-6 text-center overflow-hidden transition-all duration-500 h-full flex flex-col items-center hover:shadow-2xl hover:shadow-brand-green/10 dark:hover:shadow-brand-yellow/10 hover:-translate-y-2 hover:scale-[1.02]">
+                    {/* Hover glow effect */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${m.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+                    
+                    {/* Top accent line */}
+                    <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-0 h-1 bg-gradient-to-r ${m.gradient} rounded-full group-hover:w-16 transition-all duration-500`} />
 
                     {/* Avatar */}
-                    <div className="relative mb-6">
-                      <div className={`absolute -inset-1.5 rounded-full bg-gradient-to-tr ${m.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-400 blur-sm`} />
+                    <div className="relative mb-4">
+                      <div className={`absolute -inset-1 rounded-full bg-gradient-to-tr ${m.gradient} opacity-0 group-hover:opacity-60 transition-opacity duration-400 blur-md`} />
                       {m.image_url ? (
-                        <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white dark:border-brand-black shadow-lg">
-                          <Image src={m.image_url} alt={m.displayName} fill className="object-cover group-hover:scale-110 transition-transform duration-300" sizes="96px" />
+                        <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white dark:border-brand-black shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                          <Image src={m.image_url} alt={m.displayName} fill className="object-cover group-hover:scale-110 transition-transform duration-300" sizes="80px" />
                         </div>
                       ) : (
-                        <div className={`relative w-24 h-24 rounded-full bg-gradient-to-br ${m.gradient} flex items-center justify-center shadow-lg`}>
-                          <span className="text-2xl font-bold text-white">{m.initials}</span>
+                        <div className={`relative w-20 h-20 rounded-full bg-gradient-to-br ${m.gradient} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300`}>
+                          <span className="text-xl font-bold text-white">{m.initials}</span>
                         </div>
                       )}
                     </div>
 
-                    <h2 className="text-lg font-bold text-brand-black dark:text-brand-yellow mb-1">
+                    <h2 className="text-base font-bold text-brand-black dark:text-brand-yellow mb-1">
                       {m.displayName}
                     </h2>
-                    <p className="text-sm font-semibold text-brand-orange dark:text-brand-yellow/70 mb-3">
+                    <p className="text-sm font-semibold text-brand-orange dark:text-brand-yellow/70 mb-2">
                       {m.displayTitle}
                     </p>
                     <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 leading-relaxed max-w-[200px] mx-auto">
                       {m.bio}
                     </p>
 
-                    <div className={`mt-5 h-[2px] w-0 group-hover:w-12 bg-gradient-to-r ${m.gradient} transition-all duration-500 rounded-full`} />
+                    <div className={`mt-4 h-[2px] w-0 group-hover:w-10 bg-gradient-to-r ${m.gradient} transition-all duration-500 rounded-full`} />
                   </div>
                 </AnimateIn>
               ))}
@@ -160,20 +156,23 @@ export default async function TeamPage() {
         </section>
 
         {/* CTA */}
-        <section className="pb-24 px-5 sm:px-8">
+        <section className="pb-20 px-5 sm:px-8">
           <AnimateIn>
-            <div className="max-w-3xl mx-auto rounded-3xl bg-brand-green dark:bg-[#060f06] border border-brand-green/20 dark:border-brand-yellow/10 p-10 md:p-14 text-center">
-              <h2 className="text-3xl font-bold text-white dark:text-brand-yellow mb-3">Join Our Mission</h2>
-              <p className="text-white/60 dark:text-brand-yellow/50 max-w-md mx-auto mb-7 leading-relaxed text-sm">
-                We&apos;re always looking for passionate individuals who believe in the power of
-                documentary storytelling to create positive change in Nigeria.
-              </p>
-              <a
-                href="mailto:hello@gboyinwa.com"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-brand-yellow text-brand-black font-bold text-sm hover:bg-brand-yellow/90 active:scale-[0.98] transition-all shadow-lg shadow-brand-yellow/20"
-              >
-                Get in Touch
-              </a>
+            <div className="max-w-2xl mx-auto rounded-2xl bg-gradient-to-br from-brand-green to-brand-violet p-[1px]">
+              <div className="rounded-[calc(1rem-1px)] bg-white dark:bg-[#0a0a0a] p-8 md:p-10 text-center">
+                <h2 className="text-2xl font-bold text-brand-green dark:text-brand-yellow mb-2">Join Our Mission</h2>
+                <p className="text-brand-black/60 dark:text-brand-yellow/50 max-w-sm mx-auto mb-6 leading-relaxed text-sm">
+                  We&apos;re always looking for passionate individuals who believe in the power of
+                  documentary storytelling to create positive change in Nigeria.
+                </p>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-yellow text-brand-black font-bold text-sm hover:bg-brand-yellow/90 active:scale-[0.98] transition-all shadow-lg shadow-brand-yellow/20"
+                >
+                  Get in Touch
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </AnimateIn>
         </section>

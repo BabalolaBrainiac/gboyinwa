@@ -44,6 +44,7 @@ export function Header() {
 
   const nav = [
     { href: '/', label: 'Home' },
+    { href: '/about', label: 'About' },
     { href: '/events', label: 'Events' },
     { href: '/team', label: 'Team' },
     { href: '/blog', label: 'Blog' },

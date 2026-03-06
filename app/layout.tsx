@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Quicksand } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { AnimatedBackground } from '@/components/animated-background';
 
 const quicksand = Quicksand({
   subsets: ['latin'],
@@ -18,7 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${quicksand.variable} font-sans antialiased bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow min-h-screen`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <AnimatedBackground />
+          {children}
+        </Providers>
       </body>
     </html>
   );
