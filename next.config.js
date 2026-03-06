@@ -10,35 +10,6 @@ const nextConfig = {
     ],
   },
 
-  /**
-   * Hostname-based rewrites for blog subdomain.
-   * Runs in Node.js serverless — no Edge Runtime, no __dirname issues.
-   *
-   * blog.localhost:3000/*  → /blog/*   (local dev)
-   * blog.gboyinwa.com/*   → /blog/*   (production)
-   */
-  async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: '/:path*',
-          has: [{ type: 'host', value: 'blog.gboyinwa.com' }],
-          destination: '/blog/:path*',
-        },
-        {
-          source: '/:path*',
-          has: [{ type: 'host', value: 'blog.localhost:3000' }],
-          destination: '/blog/:path*',
-        },
-        {
-          source: '/:path*',
-          has: [{ type: 'host', value: 'blog.localhost' }],
-          destination: '/blog/:path*',
-        },
-      ],
-    };
-  },
-
   async headers() {
     return [
       {
