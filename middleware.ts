@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export function middleware(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const url = request.nextUrl.clone();
   
   const isBlogSubdomain = 
     host.startsWith('blog.localhost') || 
-    host.startsWith('blog.') ||
-    host === 'blog.gboyinwa.com';
+    host.startsWith('blog.');
   
   if (isBlogSubdomain) {
     if (url.pathname === '/') {
@@ -25,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|favicon|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$).*)'],
+  matcher: ['/((?!api|_next|favicon|.*\\.png$|.*\\.ico$).*)'],
 };
