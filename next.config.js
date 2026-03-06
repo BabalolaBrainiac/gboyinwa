@@ -9,7 +9,30 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
     ],
   },
-  // Rewrites are now handled in middleware.ts for better subdomain support
+  async rewrites() {
+    return [
+      {
+        source: '/',
+        has: [{ type: 'host', value: 'blog.localhost' }],
+        destination: '/blog',
+      },
+      {
+        source: '/:slug',
+        has: [{ type: 'host', value: 'blog.localhost' }],
+        destination: '/blog/:slug',
+      },
+      {
+        source: '/',
+        has: [{ type: 'host', value: 'blog.gboyinwa.com' }],
+        destination: '/blog',
+      },
+      {
+        source: '/:slug',
+        has: [{ type: 'host', value: 'blog.gboyinwa.com' }],
+        destination: '/blog/:slug',
+      },
+    ];
+  },
   async headers() {
     return [
       {
