@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { getEventBySlug } from '@/lib/events';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Share2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users } from 'lucide-react';
+import { ShareButton } from '@/components/share-button';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -171,17 +172,7 @@ export default async function EventPage({ params }: Props) {
                   <h3 className="font-bold text-brand-green dark:text-brand-yellow mb-4">
                     Share Event
                   </h3>
-                  <button 
-                    className="flex items-center gap-2 text-brand-green dark:text-brand-yellow hover:underline"
-                    onClick={() => {
-                      if (typeof navigator !== 'undefined') {
-                        navigator.share?.({ title: event.title, url: window.location.href }).catch(() => {});
-                      }
-                    }}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share with friends
-                  </button>
+                  <ShareButton title={event.title} />
                 </div>
               </div>
             </div>

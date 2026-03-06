@@ -18,11 +18,11 @@ export function ShareButton({ title }: ShareButtonProps) {
 
   return (
     <button 
-      className="flex items-center gap-1 text-sm text-brand-green dark:text-brand-yellow hover:underline"
+      className="flex items-center gap-2 text-brand-green dark:text-brand-yellow hover:underline"
       onClick={handleShare}
     >
       <Share2 className="w-4 h-4" />
-      Share
+      Share with friends
     </button>
   );
 }
