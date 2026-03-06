@@ -12,7 +12,7 @@ const projectRoot = process.cwd();
 config({ path: resolve(projectRoot, '.env') });
 config({ path: resolve(projectRoot, '.env.local') });
 
-import argon2 from 'argon2';
+import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import { hashEmail } from '../lib/hash';
 import { encryptPii } from '../lib/encrypt';
@@ -75,7 +75,7 @@ async function main() {
   }
 
   const password = generatePassword();
-  const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+  const passwordHash = await bcrypt.hash(password, 10);
   let emailEncrypted: string | null = null;
   try {
     emailEncrypted = encryptPii(email);

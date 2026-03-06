@@ -1,4 +1,4 @@
-/** @type {import('next').nextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   compress: true,
   poweredByHeader: false,
@@ -29,9 +29,9 @@ const nextConfig = {
     }
     return config;
   },
-  // Fix: Ensure serverComponentsExternalPackages includes native modules
+  // Fix: Ensure serverComponentsExternalPackages includes bcryptjs
   experimental: {
-    serverComponentsExternalPackages: ['argon2', 'bcrypt'],
+    serverComponentsExternalPackages: ['bcryptjs'],
   },
   async rewrites() {
     const isProd = process.env.NODE_ENV === 'production';
