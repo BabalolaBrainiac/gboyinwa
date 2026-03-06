@@ -12,10 +12,10 @@ const projectRoot = process.cwd();
 config({ path: resolve(projectRoot, '.env') });
 config({ path: resolve(projectRoot, '.env.local') });
 
-import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import { hashEmail } from '../lib/hash';
 import { encryptPii } from '../lib/encrypt';
+import { hashPassword } from '../lib/password';
 import { randomBytes } from 'crypto';
 
 function requireEnv(name: string): string {
@@ -75,7 +75,8 @@ async function main() {
   }
 
   const password = generatePassword();
-  const passwordHash = await bcrypt.hash(password, 10);
+  // Use Web Crypto API for password hashing
+  const passwordHash = await hashPassword(password);
   let emailEncrypted: string | null = null;
   try {
     emailEncrypted = encryptPii(email);

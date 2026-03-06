@@ -9,47 +9,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
     ],
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.module = config.module || {};
-      config.module.exprContextCritical = false;
-    }
-    config.ignoreWarnings = [
-      { module: /node_modules\/\@supabase\/realtime-js/ },
-    ];
-    // Fix: Exclude native modules from client bundle
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        os: false,
-        crypto: false,
-      };
-    }
-    return config;
-  },
-  // Fix: Ensure serverComponentsExternalPackages includes bcryptjs
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs'],
-  },
-  async rewrites() {
-    const isProd = process.env.NODE_ENV === 'production';
-    const blogHosts = [
-      'blog.gboyinwa.com',
-      'blog.gboyinwa.vercel.app',
-      'blog.localhost',
-    ];
-
-    const rewrites = [];
-    for (const host of blogHosts) {
-      rewrites.push(
-        { source: '/', destination: '/blog', has: [{ type: 'host', value: host }] },
-        { source: '/:path*', destination: '/blog/:path*', has: [{ type: 'host', value: host }] }
-      );
-    }
-    return rewrites;
-  },
   async headers() {
     return [
       {

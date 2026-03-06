@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase';
 import { hashEmail } from '@/lib/hash';
 import { encryptPii } from '@/lib/encrypt';
 import { sendEmail, adminInviteEmailPayload } from '@/lib/zeptomail';
+import { hashPassword } from '@/lib/password';
 import { randomBytes } from 'crypto';
 
 function generatePassword(): string {
@@ -69,9 +70,8 @@ export async function POST(req: Request) {
   if (existing) return NextResponse.json({ error: 'user already exists' }, { status: 409 });
   const tempPassword = generatePassword();
   
-  // Dynamic import bcrypt to avoid client-side bundling
-  const { default: bcrypt } = await import('bcryptjs');
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  // Use Web Crypto API for password hashing (works on Edge)
+  const passwordHash = await hashPassword(tempPassword);
   
   let emailEncrypted: string | null = null;
   try {

@@ -1,8 +1,8 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
 import { getServiceClient } from './supabase';
 import { hashEmail } from './hash';
+import { verifyPassword } from './password';
 
 const ADMIN_DOMAIN = 'gboyinwa.com';
 
@@ -17,9 +17,7 @@ export const authOptions: NextAuthOptions = {
       credentials: { email: { label: 'Email' }, password: { label: 'Password' } },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
-        // Use bcryptjs for Edge compatibility
-
+        
         const supabase = getServiceClient();
         const emailHash = hashEmail(credentials.email);
         const { data: user, error } = await supabase
@@ -28,8 +26,11 @@ export const authOptions: NextAuthOptions = {
           .eq('email_hash', emailHash)
           .single();
         if (error || !user?.password_hash) return null;
-        const ok = await bcrypt.compare(credentials.password, user.password_hash);
+        
+        // Use Web Crypto API for password verification (works on Edge)
+        const ok = await verifyPassword(user.password_hash, credentials.password);
         if (!ok) return null;
+        
         const { data: perms } = await supabase
           .from('user_permissions')
           .select('permission')
