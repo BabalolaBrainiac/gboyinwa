@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import argon2 from 'argon2';
+import bcrypt from 'bcryptjs';
 import { getServiceClient } from './supabase';
 import { hashEmail } from './hash';
 
@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
           .eq('email_hash', emailHash)
           .single();
         if (error || !user?.password_hash) return null;
-        const ok = await argon2.verify(user.password_hash, credentials.password);
+        const ok = await bcrypt.compare(credentials.password, user.password_hash);
         if (!ok) return null;
         const { data: perms } = await supabase
           .from('user_permissions')

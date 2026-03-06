@@ -9,29 +9,32 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
     ],
   },
-  async rewrites() {
-    return [
-      {
-        source: '/',
-        has: [{ type: 'host', value: 'blog.localhost' }],
-        destination: '/blog',
-      },
-      {
-        source: '/:slug',
-        has: [{ type: 'host', value: 'blog.localhost' }],
-        destination: '/blog/:slug',
-      },
-      {
-        source: '/',
-        has: [{ type: 'host', value: 'blog.gboyinwa.com' }],
-        destination: '/blog',
-      },
-      {
-        source: '/:slug',
-        has: [{ type: 'host', value: 'blog.gboyinwa.com' }],
-        destination: '/blog/:slug',
-      },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.module = config.module || {};
+      config.module.exprContextCritical = false;
+    }
+    config.ignoreWarnings = [
+      { module: /node_modules\/@supabase\/realtime-js/ },
     ];
+    return config;
+  },
+  async rewrites() {
+    const isProd = process.env.NODE_ENV === 'production';
+    const blogHosts = [
+      'blog.gboyinwa.com',
+      'blog.gboyinwa.vercel.app',
+      'blog.localhost',
+    ];
+
+    const rewrites = [];
+    for (const host of blogHosts) {
+      rewrites.push(
+        { source: '/', destination: '/blog', has: [{ type: 'host', value: host }] },
+        { source: '/:path*', destination: '/blog/:path*', has: [{ type: 'host', value: host }] }
+      );
+    }
+    return rewrites;
   },
   async headers() {
     return [
