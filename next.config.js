@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+/** @type {import('next').nextConfig} */
 const nextConfig = {
   compress: true,
   poweredByHeader: false,
@@ -15,9 +15,23 @@ const nextConfig = {
       config.module.exprContextCritical = false;
     }
     config.ignoreWarnings = [
-      { module: /node_modules\/@supabase\/realtime-js/ },
+      { module: /node_modules\/\@supabase\/realtime-js/ },
     ];
+    // Fix: Exclude native modules from client bundle
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        crypto: false,
+      };
+    }
     return config;
+  },
+  // Fix: Ensure serverComponentsExternalPackages includes native modules
+  experimental: {
+    serverComponentsExternalPackages: ['argon2', 'bcrypt'],
   },
   async rewrites() {
     const isProd = process.env.NODE_ENV === 'production';
