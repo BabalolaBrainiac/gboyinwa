@@ -28,7 +28,7 @@ export const authOptions: NextAuthOptions = {
         if (error || !user?.password_hash) return null;
         
         // Use Web Crypto API for password verification (works on Edge)
-        const ok = await verifyPassword(user.password_hash, credentials.password);
+        const ok = await verifyPassword(credentials.password, user.password_hash);
         if (!ok) return null;
         
         const { data: perms } = await supabase
