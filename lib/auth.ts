@@ -1,6 +1,5 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import argon2 from 'argon2';
 import { getServiceClient } from './supabase';
 import { hashEmail } from './hash';
 
@@ -17,6 +16,10 @@ export const authOptions: NextAuthOptions = {
       credentials: { email: { label: 'Email' }, password: { label: 'Password' } },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+        
+        // Dynamic import argon2 to avoid client-side bundling
+        const { default: argon2 } = await import('argon2');
+        
         const supabase = getServiceClient();
         const emailHash = hashEmail(credentials.email);
         const { data: user, error } = await supabase
