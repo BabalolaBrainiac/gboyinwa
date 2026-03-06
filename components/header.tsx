@@ -6,7 +6,7 @@ import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState, useRef } from 'react';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon, Shield, LayoutDashboard } from 'lucide-react';
 import { ScrollProgress } from './scroll-progress';
 
 export function Header() {
@@ -40,6 +40,9 @@ export function Header() {
   }, []);
 
   const displayName = (session?.user as { displayName?: string } | undefined)?.displayName ?? 'User';
+  const role = (session?.user as { role?: string })?.role;
+  const isSuperadmin = role === 'superadmin';
+  const isAdmin = role === 'admin' || role === 'superadmin';
   const isDark = resolvedTheme === 'dark';
 
   const nav = [
@@ -98,6 +101,38 @@ export function Header() {
                 {label}
               </Link>
             ))}
+            
+            {/* Admin Portal link - only visible to superadmins */}
+            {isSuperadmin && (
+              <Link
+                href="/admin"
+                className={[
+                  'ml-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2',
+                  pathname.startsWith('/admin')
+                    ? 'bg-brand-yellow text-brand-black'
+                    : 'bg-brand-green/10 dark:bg-brand-yellow/10 text-brand-green dark:text-brand-yellow hover:bg-brand-green dark:hover:bg-brand-yellow hover:text-white dark:hover:text-brand-black',
+                ].join(' ')}
+              >
+                <Shield className="w-4 h-4" />
+                Admin Portal
+              </Link>
+            )}
+            
+            {/* Content Manager link - visible to admins (but not superadmins since they have admin portal) */}
+            {isAdmin && !isSuperadmin && (
+              <Link
+                href="/admin/posts"
+                className={[
+                  'ml-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2',
+                  pathname.startsWith('/admin')
+                    ? 'bg-brand-green dark:bg-brand-yellow text-white dark:text-brand-black'
+                    : 'bg-brand-green/10 dark:bg-brand-yellow/10 text-brand-green dark:text-brand-yellow hover:bg-brand-green dark:hover:bg-brand-yellow hover:text-white dark:hover:text-brand-black',
+                ].join(' ')}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Manage Content
+              </Link>
+            )}
           </nav>
 
           {/* Right side */}
@@ -151,7 +186,7 @@ export function Header() {
         <div
           className={[
             'md:hidden overflow-hidden transition-all duration-300',
-            mobileOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0',
+            mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0',
           ].join(' ')}
         >
           <nav className="glass border-t border-brand-green/10 dark:border-brand-yellow/10 flex flex-col p-4 gap-1">
@@ -170,6 +205,29 @@ export function Header() {
                 {label}
               </Link>
             ))}
+            
+            {/* Mobile Admin links */}
+            {isSuperadmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-yellow bg-brand-yellow/10 flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4" />
+                Admin Portal
+              </Link>
+            )}
+            {isAdmin && !isSuperadmin && (
+              <Link
+                href="/admin/posts"
+                onClick={() => setMobileOpen(false)}
+                className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-green dark:text-brand-yellow bg-brand-green/10 dark:bg-brand-yellow/10 flex items-center gap-2"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Manage Content
+              </Link>
+            )}
+            
             {status === 'authenticated' && (
               <button
                 type="button"

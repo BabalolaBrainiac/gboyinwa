@@ -3,10 +3,13 @@
  * 
  * This script:
  * 1. Deletes ALL existing superadmin users from the database
- * 2. Creates a new superadmin user with email: babalolaopedaniel@gmail.com
+ * 2. Creates a new superadmin user using CREATE_SUPERADMIN_EMAIL env var
  * 3. Returns the generated password
  * 
  * Usage: npx tsx scripts/reset-superadmin.ts
+ * 
+ * Requires CREATE_SUPERADMIN_EMAIL environment variable to be set
+ * (typically from .env.local file)
  */
 
 import { config } from 'dotenv';
@@ -124,7 +127,15 @@ function getServiceClient(): SupabaseClient {
 // Main Script
 // ============================================================================
 
-const SUPERADMIN_EMAIL = 'babalolaopedaniel@gmail.com';
+const SUPERADMIN_EMAIL = process.env.CREATE_SUPERADMIN_EMAIL;
+
+if (!SUPERADMIN_EMAIL) {
+  console.error('CREATE_SUPERADMIN_EMAIL env var is required');
+  process.exit(1);
+}
+
+// Assign to a const to satisfy TypeScript
+const NEW_SUPERADMIN_EMAIL: string = SUPERADMIN_EMAIL;
 
 async function main() {
   console.log('='.repeat(60));
@@ -189,9 +200,9 @@ async function main() {
 
   // Step 2: Create new superadmin
   console.log('Step 2: Creating new superadmin...');
-  console.log(`  Email: ${SUPERADMIN_EMAIL}`);
+  console.log(`  Email: ${NEW_SUPERADMIN_EMAIL}`);
 
-  const emailNorm = SUPERADMIN_EMAIL.trim().toLowerCase();
+  const emailNorm = NEW_SUPERADMIN_EMAIL.trim().toLowerCase();
   const emailHash = hashEmail(emailNorm);
   
   // Check if a user with this email already exists (as non-superadmin)
@@ -245,7 +256,7 @@ async function main() {
   console.log('SUCCESS! New superadmin created:');
   console.log('='.repeat(60));
   console.log(`  User ID:    ${newUser.id}`);
-  console.log(`  Email:      ${SUPERADMIN_EMAIL}`);
+  console.log(`  Email:      ${NEW_SUPERADMIN_EMAIL}`);
   console.log(`  Role:       ${newUser.role}`);
   console.log(`  Created:    ${newUser.created_at}`);
   console.log('');

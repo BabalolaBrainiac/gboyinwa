@@ -24,6 +24,15 @@ async function getPostAuthor(authorId: string | null) {
   return data;
 }
 
+async function trackPostView(postId: string) {
+  try {
+    const supabase = getServiceClient();
+    await supabase.rpc('increment_post_view', { p_post_id: postId });
+  } catch {
+    // Silently fail - don't block page render for view tracking
+  }
+}
+
 // Default grant post content
 const GRANT_POST_SLUG = 'gboyinde-grant-magic-in-eko-grey';
 
@@ -103,6 +112,11 @@ export default async function BlogPostPage({ params }: Props) {
   }
   
   if (!post) notFound();
+  
+  // Track view for this post (only for real posts, not default content)
+  if ((post as { id?: string }).id && (post as { id?: string }).id !== 'gboyinde-grant-launch') {
+    await trackPostView((post as { id: string }).id);
+  }
   
   const author = await getPostAuthor((post as { author_id?: string }).author_id || null);
 
