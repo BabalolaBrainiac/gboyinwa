@@ -5,19 +5,11 @@ const nextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
     remotePatterns: [
-    { protocol: 'https', hostname: '**.supabase.co', pathname: '/storage/**' },
-    { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
-  ],
+      { protocol: 'https', hostname: '**.supabase.co', pathname: '/storage/**' },
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
+    ],
   },
-  async rewrites() {
-    const isProd = process.env.NODE_ENV === 'production';
-    const blogHost = isProd ? 'blog.gboyinwa.com' : 'blog.localhost';
-    return [
-      { source: '/', destination: '/blog', has: [{ type: 'host', value: blogHost }] },
-      { source: '/:slug', destination: '/blog/:slug', has: [{ type: 'host', value: blogHost }] },
-      { source: '/:slug/edit', destination: '/blog/:slug/edit', has: [{ type: 'host', value: blogHost }] },
-    ];
-  },
+  // Rewrites are now handled in middleware.ts for better subdomain support
   async headers() {
     return [
       {
