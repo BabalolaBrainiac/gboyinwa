@@ -1,76 +1,45 @@
-/**
- * Send Campaign API
- * 
- * POST /api/admin/campaigns/:id/send - Send a draft campaign
- */
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { hasPermission, type Permission } from '@/lib/permissions';
 import { getServiceClient } from '@/lib/supabase';
+import { sendCampaignNow } from '@/app/api/admin/campaigns/route';
 
-interface Params {
-  params: { id: string };
-}
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
-export async function POST(_request: Request, { params }: Params) {
+export async function POST(_request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
   const role = (session?.user as { role?: string })?.role ?? '';
   const permissions = ((session?.user as { permissions?: string[] })?.permissions ?? []) as Permission[];
-
-  if (!session) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
 
   if (!hasPermission(role, permissions, 'campaigns:send')) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
   const supabase = getServiceClient();
+  const { data: campaign, error } = await supabase
+    .from('email_campaigns')
+    .select('id, status, recipient_type, subject, content_html, content_text')
+    .eq('id', params.id)
+    .single();
 
-  try {
-    // Get campaign
-    const { data: campaign, error: fetchError } = await supabase
-      .from('email_campaigns')
-      .select('*')
-      .eq('id', params.id)
-      .single();
+  if (error || !campaign) return NextResponse.json({ error: 'campaign not found' }, { status: 404 });
+  if (campaign.status !== 'draft') return NextResponse.json({ error: 'only draft campaigns can be sent' }, { status: 400 });
 
-    if (fetchError || !campaign) {
-      return NextResponse.json({ error: 'campaign not found' }, { status: 404 });
-    }
+  // Mark as sending
+  await supabase.from('email_campaigns').update({ status: 'sending', started_at: new Date().toISOString() }).eq('id', params.id);
 
-    if (campaign.status !== 'draft') {
-      return NextResponse.json({ 
-        error: 'only draft campaigns can be sent' 
-      }, { status: 400 });
-    }
+  // Send synchronously (maxDuration = 300 gives us 5 minutes)
+  const result = await sendCampaignNow(
+    campaign.id,
+    campaign.recipient_type,
+    campaign.subject,
+    campaign.content_html,
+    campaign.content_text
+  );
 
-    // Update status to sending
-    const { error: updateError } = await supabase
-      .from('email_campaigns')
-      .update({
-        status: 'sending',
-        started_at: new Date().toISOString(),
-        sent_by: session.user?.id || null,
-        sent_by_email: session.user?.email || null,
-      })
-      .eq('id', params.id);
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // Trigger the actual send via the parent route's logic
-    // In production, this would queue to a background job
-    // For now, return success and let the client poll for status
-    return NextResponse.json({
-      message: 'campaign sending started',
-      campaignId: params.id,
-    });
-  } catch (err: any) {
-    console.error('Campaign send error:', err);
-    return NextResponse.json({ error: 'internal error' }, { status: 500 });
-  }
+  return NextResponse.json({ message: 'Campaign sent', ...result });
 }

@@ -61,6 +61,14 @@ export type BlogSubscriptionPermission =
   | 'subscriptions:manage'
   | 'subscriptions:notify';
 
+// Document/Pitch Management Permissions
+export type DocumentPermission =
+  | 'documents:view'
+  | 'documents:upload'
+  | 'documents:share'
+  | 'documents:delete'
+  | 'documents:present';
+
 // All Permissions Combined
 export type Permission =
   | ContentPermission
@@ -69,7 +77,8 @@ export type Permission =
   | MetricsPermission
   | SubscriberPermission
   | CampaignPermission
-  | BlogSubscriptionPermission;
+  | BlogSubscriptionPermission
+  | DocumentPermission;
 
 // =============================================================================
 // ALL PERMISSIONS ARRAY
@@ -120,6 +129,12 @@ export const ALL_PERMISSIONS: Permission[] = [
   'subscriptions:view',
   'subscriptions:manage',
   'subscriptions:notify',
+  // Documents
+  'documents:view',
+  'documents:upload',
+  'documents:share',
+  'documents:delete',
+  'documents:present',
 ];
 
 // =============================================================================
@@ -227,6 +242,18 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'subscriptions:notify',
     ],
   },
+  {
+    key: 'documents',
+    label: 'Documents & Pitches',
+    description: 'Manage pitch documents and share with stakeholders',
+    permissions: [
+      'documents:view',
+      'documents:upload',
+      'documents:share',
+      'documents:delete',
+      'documents:present',
+    ],
+  },
 ];
 
 // =============================================================================
@@ -279,6 +306,12 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
   'subscriptions:view': { label: 'View Subscriptions', description: 'View subscription settings' },
   'subscriptions:manage': { label: 'Manage Subscriptions', description: 'Manage subscription settings' },
   'subscriptions:notify': { label: 'Send Notifications', description: 'Send blog post notifications to subscribers' },
+  // Documents
+  'documents:view': { label: 'View Documents', description: 'View uploaded documents and pitches' },
+  'documents:upload': { label: 'Upload Documents', description: 'Upload new documents to R2 storage' },
+  'documents:share': { label: 'Share Documents', description: 'Share documents via email with stakeholders' },
+  'documents:delete': { label: 'Delete Documents', description: 'Delete uploaded documents' },
+  'documents:present': { label: 'Present Documents', description: 'Present/pitch documents in fullscreen mode' },
 };
 
 // =============================================================================

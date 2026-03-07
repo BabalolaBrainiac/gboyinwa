@@ -3,18 +3,20 @@ import { getServerSession } from 'next-auth';
 import { authOptions, hasPermission } from '@/lib/auth';
 import Link from 'next/link';
 import { Header } from '@/components/header';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  FileText, 
-  Users, 
+import { getServiceClient } from '@/lib/supabase';
+import Image from 'next/image';
+import {
+  LayoutDashboard,
+  Calendar,
+  FileText,
+  Users,
   Shield,
-  AlertCircle,
   Mail,
   UsersRound,
   Megaphone,
   BarChart3,
-  type LucideIcon
+  FolderOpen,
+  UserCircle,
 } from 'lucide-react';
 import { 
   canViewCommunications, 
@@ -23,6 +25,7 @@ import {
   canViewDashboard,
   type Permission 
 } from '@/lib/permissions';
+import { SidebarNavItem } from '@/components/admin/sidebar-nav-item';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -30,9 +33,31 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   
   const role = (session.user as { role?: string }).role;
   const permissions = ((session.user as { permissions?: string[] }).permissions ?? []) as Permission[];
-  
+  const userId = (session.user as { id?: string }).id;
+  const sessionDisplayName = (session.user as { displayName?: string }).displayName || '';
+
   // Only allow admins and superadmins
   if (role !== 'superadmin' && role !== 'admin') redirect('/');
+
+  // Fetch fresh profile (avatar + latest display name)
+  let avatarUrl: string | null = null;
+  let displayName = sessionDisplayName;
+  if (userId) {
+    const supabase = getServiceClient();
+    const { data: profile } = await supabase
+      .from('users')
+      .select('display_name, avatar_url')
+      .eq('id', userId)
+      .single();
+    if (profile) {
+      displayName = profile.display_name || sessionDisplayName;
+      avatarUrl = profile.avatar_url || null;
+    }
+  }
+
+  const initials = displayName
+    ? displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+    : (role === 'superadmin' ? 'SA' : 'AD');
   
   const isSuperadmin = role === 'superadmin';
   
@@ -44,28 +69,58 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const canViewSubs = canViewSubscribers(role, permissions);
   const canViewCamps = canManageCampaigns(role, permissions);
   const canViewMetricsDash = canViewDashboard(role, permissions);
+  const canViewDocs = hasPermission(role, permissions, 'documents:view');
+  
+  // All permission checks in one object for the sidebar
+  const permissionsMap = {
+    events: canManageEvents,
+    posts: canManagePosts,
+    users: canManageUsers,
+    subscribers: canViewSubs,
+    campaigns: canViewCamps,
+    communications: canViewComms,
+    analytics: canViewMetricsDash,
+    documents: canViewDocs,
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <div className="flex-1 flex pt-24">
         <aside className="w-64 border-r border-brand-green/10 dark:border-brand-yellow/10 p-4 shrink-0 bg-white/50 dark:bg-brand-black/30 min-h-[calc(100vh-6rem)]">
+          {/* User profile area */}
           <div className="mb-6 px-3">
-            <div className="flex items-center gap-2 text-brand-green dark:text-brand-yellow">
-              {isSuperadmin ? (
-                <>
-                  <Shield className="w-5 h-5" />
-                  <span className="font-bold">Superadmin</span>
-                </>
-              ) : (
-                <>
-                  <LayoutDashboard className="w-5 h-5" />
-                  <span className="font-bold">Admin</span>
-                </>
-              )}
-            </div>
-            <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 mt-1">
-              {isSuperadmin ? 'Full system access' : 'Content management only'}
+            <Link href="/admin/profile" className="flex items-center gap-3 group mb-3 hover:opacity-90 transition-opacity">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-brand-green/10 dark:bg-brand-yellow/10 flex items-center justify-center shrink-0 border border-brand-green/20 dark:border-brand-yellow/20 relative">
+                {avatarUrl ? (
+                  <Image 
+                    src={avatarUrl} 
+                    alt={displayName} 
+                    fill
+                    className="object-cover"
+                    sizes="40px"
+                    unoptimized
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-brand-green dark:text-brand-yellow">{initials}</span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-brand-black dark:text-brand-yellow text-sm truncate">
+                  {displayName || 'Admin'}
+                </p>
+                <div className="flex items-center gap-1">
+                  {isSuperadmin ? (
+                    <Shield className="w-3 h-3 text-brand-yellow" />
+                  ) : (
+                    <UserCircle className="w-3 h-3 text-brand-green dark:text-brand-yellow/60" />
+                  )}
+                  <span className="text-xs text-brand-black/50 dark:text-brand-yellow/50 capitalize">{role}</span>
+                </div>
+              </div>
+            </Link>
+            <p className="text-xs text-brand-black/40 dark:text-brand-yellow/40">
+              {isSuperadmin ? 'Full system access' : 'Admin'}
             </p>
           </div>
           
@@ -79,98 +134,80 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Dashboard
             </Link>
             
-            {/* Events - visible to those with event permissions */}
-            {canManageEvents && (
-              <Link
-                href="/admin/events"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <Calendar className="w-4 h-4" />
-                Events
-              </Link>
-            )}
+            {/* Events - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/events" 
+              icon={<Calendar className="w-4 h-4" />}
+              label="Events"
+              hasPermission={permissionsMap.events}
+            />
             
-            {/* Blog Posts - visible to those with post permissions */}
-            {canManagePosts && (
-              <Link
-                href="/admin/posts"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Blog Posts
-              </Link>
-            )}
+            {/* Blog Posts - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/posts" 
+              icon={<FileText className="w-4 h-4" />}
+              label="Blog Posts"
+              hasPermission={permissionsMap.posts}
+            />
             
-            {/* Users - visible only to superadmins */}
-            {canManageUsers && (
-              <Link
-                href="/admin/users"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <Users className="w-4 h-4" />
-                Users
-              </Link>
-            )}
+            {/* Users - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/users" 
+              icon={<Users className="w-4 h-4" />}
+              label="Users"
+              hasPermission={permissionsMap.users}
+            />
             
-            {/* Subscribers - visible to those with subscriber permissions */}
-            {canViewSubs && (
-              <Link
-                href="/admin/subscribers"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <UsersRound className="w-4 h-4" />
-                Subscribers
-              </Link>
-            )}
+            {/* Subscribers - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/subscribers" 
+              icon={<UsersRound className="w-4 h-4" />}
+              label="Subscribers"
+              hasPermission={permissionsMap.subscribers}
+            />
             
-            {/* Campaigns - visible to those with campaign permissions */}
-            {canViewCamps && (
-              <Link
-                href="/admin/campaigns"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <Megaphone className="w-4 h-4" />
-                Campaigns
-              </Link>
-            )}
+            {/* Campaigns - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/campaigns" 
+              icon={<Megaphone className="w-4 h-4" />}
+              label="Campaigns"
+              hasPermission={permissionsMap.campaigns}
+            />
             
-            {/* Communications - visible to those with communication permissions */}
-            {canViewComms && (
-              <Link
-                href="/admin/communications"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                Communications
-              </Link>
-            )}
+            {/* Communications - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/communications" 
+              icon={<Mail className="w-4 h-4" />}
+              label="Communications"
+              hasPermission={permissionsMap.communications}
+            />
             
-            {/* Analytics - visible to those with metrics permissions */}
-            {canViewMetricsDash && (
-              <Link
-                href="/admin/analytics"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-black/80 dark:text-brand-yellow/80 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Analytics
-              </Link>
-            )}
+            {/* Analytics - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/analytics" 
+              icon={<BarChart3 className="w-4 h-4" />}
+              label="Analytics"
+              hasPermission={permissionsMap.analytics}
+            />
+            
+            {/* Documents - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/documents" 
+              icon={<FolderOpen className="w-4 h-4" />}
+              label="Documents"
+              hasPermission={permissionsMap.documents}
+            />
           </nav>
           
-          {/* Permission notice for limited admins */}
-          {!isSuperadmin && (!canManageEvents || !canManagePosts) && (
-            <div className="mt-6 p-3 rounded-lg bg-brand-yellow/5 border border-brand-yellow/10">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-brand-yellow shrink-0 mt-0.5" />
-                <p className="text-xs text-brand-black/60 dark:text-brand-yellow/60">
-                  Your permissions are limited. Contact a superadmin for additional access.
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Back to site link */}
-          <div className="mt-6 pt-6 border-t border-brand-green/10 dark:border-brand-yellow/10">
+          {/* Back to site + Profile */}
+          <div className="mt-6 pt-6 border-t border-brand-green/10 dark:border-brand-yellow/10 space-y-1">
+            <Link
+              href="/admin/profile"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-brand-black/60 dark:text-brand-yellow/60 hover:text-brand-green dark:hover:text-brand-yellow hover:bg-brand-green/5 dark:hover:bg-brand-yellow/5 rounded-lg transition-colors"
+            >
+              <UserCircle className="w-4 h-4" />
+              Edit Profile
+            </Link>
             <Link
               href="/"
               className="flex items-center gap-2 px-3 py-2 text-sm text-brand-black/50 dark:text-brand-yellow/50 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
@@ -179,7 +216,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </div>
         </aside>
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+        <main className="flex-1 min-w-0 overflow-x-hidden p-4 md:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

@@ -2,88 +2,76 @@ import Image from 'next/image';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AnimateIn } from '@/components/animate-in';
-import { getTeamMembers } from '@/lib/team';
 import { Users, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 60;
-
-// Display-layer overrides — applied over DB data if names match, otherwise used as static fallback
-const TEAM_OVERRIDES: Record<string, { displayName?: string; displayTitle?: string; bio: string; gradient: string; initials: string }> = {
-  'Karamat Ademilade Eko': {
-    displayName: 'Karamat Eko',
-    displayTitle: 'Lead Project Manager',
-    bio: 'Moving the pieces so everyone else can create.',
+// Team members with correct names, titles, and photos
+const TEAM_MEMBERS = [
+  {
+    id: 'oluwatimilehin-coker',
+    full_name: 'Oluwatimilehin Coker',
+    displayName: 'Oluwatimilehin Coker',
+    displayTitle: 'Chief Executive Officer (CEO)',
+    bio: 'Leading the vision and driving the mission forward.',
     gradient: 'from-brand-green to-brand-violet',
-    initials: 'KE',
+    initials: 'OC',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/oluwatimilehin.jpg',
   },
-  'Opeyemi Daniel Babalola': {
-    displayName: 'Opeyemi',
-    displayTitle: 'Nerd',
-    bio: 'software, epic fantasy, books, music and everything else in between.',
-    gradient: 'from-brand-yellow to-brand-orange',
-    initials: 'OB',
-  },
-  'Daniel Ayodele Adeyinka': {
+  {
+    id: 'daniel-adeyinka',
+    full_name: 'Daniel Adeyinka',
+    displayName: 'Daniel Adeyinka',
+    displayTitle: 'Chief Creative Officer (CCO)',
     bio: 'Turning complex narratives into clarity. Words are his currency.',
     gradient: 'from-brand-orange to-brand-yellow',
     initials: 'DA',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/daniel.jpg',
   },
-  'Taribo Adeyinka Akinnukawe': {
-    displayName: 'Taribo Akinnukawe',
+  {
+    id: 'tari-akinnukawe',
+    full_name: 'Tari Akinnukawe',
+    displayName: 'Tari Akinnukawe',
+    displayTitle: 'Chief Operating Officer (COO)',
     bio: 'Protecting the work, enabling the vision.',
     gradient: 'from-brand-violet to-brand-orange',
     initials: 'TA',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/tari.jpg',
   },
-  'Victoria Adunni Ogunwemimo': {
-    displayName: 'Victoria Ogunwemimo',
+  {
+    id: 'opeyemi-babalola',
+    full_name: 'Opeyemi Babalola',
+    displayName: 'Opeyemi Babalola',
+    displayTitle: 'Chief Technical Officer (CTO)',
+    bio: 'Building the technology that powers our storytelling.',
+    gradient: 'from-brand-yellow to-brand-orange',
+    initials: 'OB',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/opeyemi.jpg',
+  },
+  {
+    id: 'karamat-eko',
+    full_name: 'Karamat Eko',
+    displayName: 'Karamat Eko',
+    displayTitle: 'Program Coordinator',
+    bio: 'Moving the pieces so everyone else can create.',
+    gradient: 'from-brand-green to-brand-violet',
+    initials: 'KE',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/karamat.jpg',
+  },
+  {
+    id: 'victoria-ogunwemimo',
+    full_name: 'Victoria "Aladunni" Ogunwemimo',
+    displayName: 'Victoria "Aladunni" Ogunwemimo',
+    displayTitle: 'Marketing and Community Manager',
     bio: 'Here to make the magic happen.',
     gradient: 'from-brand-green to-brand-yellow',
     initials: 'VO',
+    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/victoria.jpg',
   },
-  'Oluwatimilehin Michael Coker': {
-    displayName: 'Timilehin Coker',
-    bio: 'Keeping the engine running at full throttle.',
-    gradient: 'from-brand-violet to-brand-green',
-    initials: 'TC',
-  },
-};
-
-const FALLBACK_ORDER = [
-  'Daniel Ayodele Adeyinka',
-  'Karamat Ademilade Eko',
-  'Taribo Adeyinka Akinnukawe',
-  'Opeyemi Daniel Babalola',
-  'Victoria Adunni Ogunwemimo',
-  'Oluwatimilehin Michael Coker',
 ];
 
-const STATIC_TEAM = FALLBACK_ORDER.map((name) => {
-  const o = TEAM_OVERRIDES[name] ?? { bio: 'Part of the team making it happen.', gradient: 'from-brand-green to-brand-yellow', initials: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() };
-  return { id: name, full_name: name, title: '', image_url: '', ...o };
-});
-
-type RawMember = { id: string; full_name: string; title: string; image_url: string | null; sort_order?: number };
-
-function mergeOverrides(member: RawMember) {
-  const o = TEAM_OVERRIDES[member.full_name];
-  return {
-    ...member,
-    displayName: o?.displayName ?? member.full_name,
-    displayTitle: o?.displayTitle ?? member.title,
-    bio: o?.bio ?? 'Part of the team making it happen.',
-    gradient: o?.gradient ?? 'from-brand-green to-brand-yellow',
-    initials: o?.initials ?? member.full_name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-  };
-}
-
 export default async function TeamPage() {
-  const dbMembers = await getTeamMembers();
-  const rawMembers: RawMember[] = dbMembers.length > 0
-    ? dbMembers
-    : STATIC_TEAM;
-  const members = rawMembers.map(mergeOverrides);
+  // Always use static TEAM_MEMBERS — photos and bios are authoritative here
+  const members = TEAM_MEMBERS;
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-brand-black">
@@ -127,12 +115,19 @@ export default async function TeamPage() {
                     <div className="relative mb-4">
                       <div className={`absolute -inset-1 rounded-full bg-gradient-to-tr ${m.gradient} opacity-0 group-hover:opacity-60 transition-opacity duration-400 blur-md`} />
                       {m.image_url ? (
-                        <div className="relative w-20 h-20 rounded-full overflow-hidden border-4 border-white dark:border-brand-black shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                          <Image src={m.image_url} alt={m.displayName} fill className="object-cover group-hover:scale-110 transition-transform duration-300" sizes="80px" />
+                        <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white dark:border-brand-black shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                          <Image 
+                            src={m.image_url} 
+                            alt={m.displayName} 
+                            fill 
+                            className="object-cover group-hover:scale-110 transition-transform duration-300" 
+                            sizes="96px"
+                            priority={i < 3}
+                          />
                         </div>
                       ) : (
-                        <div className={`relative w-20 h-20 rounded-full bg-gradient-to-br ${m.gradient} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300`}>
-                          <span className="text-xl font-bold text-white">{m.initials}</span>
+                        <div className={`relative w-24 h-24 rounded-full bg-gradient-to-br ${m.gradient} flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300`}>
+                          <span className="text-2xl font-bold text-white">{m.initials}</span>
                         </div>
                       )}
                     </div>

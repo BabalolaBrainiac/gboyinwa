@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   try {
     let query = supabase
       .from('subscribers')
-      .select('id, status, source, metadata, confirmed_at, unsubscribed_at, created_at, updated_at', { count: 'exact' });
+      .select('id, status, source, confirmed_at, unsubscribed_at, created_at, updated_at', { count: 'exact' });
 
     if (status) {
       query = query.eq('status', status);
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         last_name: lastName || null,
         status: skipConfirmation ? 'active' : 'pending',
         source: 'admin',
-        metadata: { added_by: session.user?.email || 'admin' },
+        // Note: metadata column not available in current schema
         confirmation_token: confirmationToken,
         confirmation_sent_at: skipConfirmation ? null : new Date().toISOString(),
         confirmed_at: skipConfirmation ? new Date().toISOString() : null,

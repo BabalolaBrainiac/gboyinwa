@@ -31,7 +31,7 @@ export async function GET() {
   const supabase = getServiceClient();
   const { data: users, error } = await supabase
     .from('users')
-    .select('id, role, created_at')
+    .select('id, role, created_at, display_name, avatar_url')
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const { data: perms } = await supabase.from('user_permissions').select('user_id, permission');
@@ -44,6 +44,8 @@ export async function GET() {
     id: u.id,
     role: u.role,
     created_at: u.created_at,
+    display_name: (u as { display_name?: string | null }).display_name ?? null,
+    avatar_url: (u as { avatar_url?: string | null }).avatar_url ?? null,
     permissions: permsByUser[u.id] ?? [],
   }));
   return NextResponse.json(list);

@@ -68,7 +68,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const body = await request.json();
-  const { firstName, lastName, status, metadata } = body;
+  const { firstName, lastName, status } = body;
 
   const supabase = getServiceClient();
 
@@ -83,7 +83,7 @@ export async function PATCH(request: Request, { params }: Params) {
         updates.unsubscribed_at = new Date().toISOString();
       }
     }
-    if (metadata !== undefined) updates.metadata = metadata;
+    // metadata column not available in current schema
 
     const { data: subscriber, error } = await supabase
       .from('subscribers')

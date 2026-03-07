@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UsersRound, Search, Download, Plus, Trash2, Mail, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { UsersRound, Search, Download, Plus, Trash2, Mail, CheckCircle, XCircle, Clock, Loader2, X, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { hasPermission, type Permission } from '@/lib/permissions';
 
@@ -33,6 +33,17 @@ export default function SubscribersPage() {
     unsubscribed: 0,
     total: 0,
   });
+
+  // Add subscriber modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newSubscriber, setNewSubscriber] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+  });
+  const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [addSuccess, setAddSuccess] = useState('');
 
   useEffect(() => {
     fetchSubscribers();
@@ -86,6 +97,45 @@ export default function SubscribersPage() {
       }
     } catch (err) {
       console.error('Failed to delete subscriber:', err);
+    }
+  };
+
+  const handleAddSubscriber = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAdding(true);
+    setAddError('');
+    setAddSuccess('');
+
+    try {
+      const res = await fetch('/api/admin/subscribers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newSubscriber.email,
+          firstName: newSubscriber.firstName,
+          lastName: newSubscriber.lastName,
+          skipConfirmation: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setAddSuccess(data.message || 'Subscriber added successfully');
+        setNewSubscriber({ email: '', firstName: '', lastName: '' });
+        fetchSubscribers();
+        fetchStats();
+        setTimeout(() => {
+          setShowAddModal(false);
+          setAddSuccess('');
+        }, 1500);
+      } else {
+        setAddError(data.error || 'Failed to add subscriber');
+      }
+    } catch (err) {
+      setAddError('Failed to add subscriber');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -181,7 +231,10 @@ export default function SubscribersPage() {
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-brand-green dark:bg-brand-yellow text-white dark:text-brand-black rounded-lg hover:opacity-90 transition-opacity">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-green dark:bg-brand-yellow text-white dark:text-brand-black rounded-lg hover:opacity-90 transition-opacity"
+            >
               <Plus className="w-4 h-4" />
               Add
             </button>
@@ -250,6 +303,120 @@ export default function SubscribersPage() {
           </table>
         )}
       </div>
+
+      {/* Add Subscriber Modal */}
+      {showAddModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddModal(false);
+          }}
+        >
+          <div className="bg-white dark:bg-brand-black rounded-2xl border border-brand-green/20 dark:border-brand-yellow/20 shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-yellow/10 flex items-center justify-center">
+                  <UsersRound className="w-5 h-5 text-brand-green dark:text-brand-yellow" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-brand-black dark:text-brand-yellow">
+                    Add Subscriber
+                  </h3>
+                  <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50">
+                    Add a new email subscriber
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1.5 rounded-lg text-brand-black/40 dark:text-brand-yellow/40 hover:bg-brand-green/10 dark:hover:bg-brand-yellow/10 hover:text-brand-black dark:hover:text-brand-yellow transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddSubscriber} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={newSubscriber.email}
+                  onChange={(e) => setNewSubscriber({ ...newSubscriber, email: e.target.value })}
+                  placeholder="subscriber@example.com"
+                  className="w-full px-4 py-3 rounded-xl border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-2">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newSubscriber.firstName}
+                    onChange={(e) => setNewSubscriber({ ...newSubscriber, firstName: e.target.value })}
+                    placeholder="John"
+                    className="w-full px-4 py-3 rounded-xl border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newSubscriber.lastName}
+                    onChange={(e) => setNewSubscriber({ ...newSubscriber, lastName: e.target.value })}
+                    placeholder="Doe"
+                    className="w-full px-4 py-3 rounded-xl border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                  />
+                </div>
+              </div>
+
+              {addError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {addError}
+                </div>
+              )}
+
+              {addSuccess && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-700 text-sm">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  {addSuccess}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-2.5 px-4 border border-brand-green/20 dark:border-brand-yellow/20 text-brand-black dark:text-brand-yellow font-medium rounded-xl hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAdding || !newSubscriber.email}
+                  className="flex-1 py-2.5 px-4 bg-brand-green dark:bg-brand-yellow text-white dark:text-brand-black font-medium rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity text-sm flex items-center justify-center gap-2"
+                >
+                  {isAdding ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Adding...</>
+                  ) : (
+                    <><Plus className="w-4 h-4" /> Add Subscriber</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
