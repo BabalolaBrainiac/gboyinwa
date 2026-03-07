@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Megaphone, Plus, Eye, Send, Trash2, Loader2, Users, Mail, BarChart3 } from 'lucide-react';
+import { Megaphone, Plus, Eye, Send, Trash2, Loader2, Users, Mail, BarChart3, Edit2, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { useConfirm, useAlert } from '@/components/ui/confirm-dialog';
+import { CustomSelect } from '@/components/ui/custom-select';
 import Link from 'next/link';
 
 interface Campaign {
@@ -27,10 +29,13 @@ export default function CampaignsPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const permissions = ((session?.user as { permissions?: string[] })?.permissions ?? []) as Permission[];
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const canCreate = hasPermission(role, permissions, 'campaigns:create');
   const canSend = hasPermission(role, permissions, 'campaigns:send');
   const canDelete = hasPermission(role, permissions, 'campaigns:delete');
+  const canEdit = hasPermission(role, permissions, 'campaigns:edit');
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +48,8 @@ export default function CampaignsPage() {
     sendNow: false,
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -82,7 +89,11 @@ export default function CampaignsPage() {
         setForm({ name: '', subject: '', content: '', recipientType: 'subscribers', sendNow: false });
         fetchCampaigns();
       } else {
-        alert(data.error || 'Failed to create campaign');
+        await alert({
+          title: 'Error',
+          description: data.error || 'Failed to create campaign',
+          variant: 'error',
+        });
       }
     } catch (err) {
       console.error('Failed to create campaign:', err);
@@ -92,7 +103,14 @@ export default function CampaignsPage() {
   };
 
   const handleSend = async (id: string) => {
-    if (!confirm('Are you sure you want to send this campaign?')) return;
+    const confirmed = await confirm({
+      title: 'Send Campaign?',
+      description: 'This will immediately send the campaign to all recipients. Are you sure?',
+      confirmLabel: 'Send Now',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/campaigns/${id}/send`, { method: 'POST' });
@@ -100,7 +118,11 @@ export default function CampaignsPage() {
         fetchCampaigns();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to send campaign');
+        await alert({
+          title: 'Send Failed',
+          description: data.error || 'Failed to send campaign',
+          variant: 'error',
+        });
       }
     } catch (err) {
       console.error('Failed to send campaign:', err);
@@ -108,15 +130,114 @@ export default function CampaignsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this campaign?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Campaign?',
+      description: 'This will permanently remove the campaign. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+
+    // Show loading toast
+    const loadingToast = document.createElement('div');
+    loadingToast.className = 'fixed top-4 right-4 z-50 bg-brand-black dark:bg-white text-white dark:text-brand-black px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+    loadingToast.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Deleting...';
+    document.body.appendChild(loadingToast);
 
     try {
       const res = await fetch(`/api/admin/campaigns/${id}`, { method: 'DELETE' });
+      loadingToast.remove();
+      
       if (res.ok) {
+        // Show success toast
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+        toast.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Campaign deleted';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
         setCampaigns(campaigns.filter(c => c.id !== id));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        await alert({
+          title: 'Delete Failed',
+          description: data.error || 'Failed to delete campaign',
+          variant: 'error',
+        });
       }
     } catch (err) {
-      console.error('Failed to delete campaign:', err);
+      loadingToast.remove();
+      await alert({
+        title: 'Delete Failed',
+        description: 'Network error. Please try again.',
+        variant: 'error',
+      });
+    }
+  };
+
+  const handleEdit = (campaign: Campaign) => {
+    setEditingCampaign(campaign);
+    setForm({
+      name: campaign.name,
+      subject: campaign.subject,
+      content: '', // Would need to fetch full content
+      recipientType: campaign.recipient_type,
+      sendNow: false,
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCampaign) return;
+    setIsUpdating(true);
+
+    // Show loading toast
+    const loadingToast = document.createElement('div');
+    loadingToast.className = 'fixed top-4 right-4 z-50 bg-brand-black dark:bg-white text-white dark:text-brand-black px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+    loadingToast.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Updating...';
+    document.body.appendChild(loadingToast);
+
+    try {
+      const res = await fetch(`/api/admin/campaigns/${editingCampaign.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          subject: form.subject,
+          recipient_type: form.recipientType,
+        }),
+      });
+
+      loadingToast.remove();
+      const data = await res.json();
+
+      if (res.ok) {
+        // Show success toast
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+        toast.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Campaign updated';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        
+        setEditingCampaign(null);
+        setForm({ name: '', subject: '', content: '', recipientType: 'subscribers', sendNow: false });
+        fetchCampaigns();
+      } else {
+        await alert({
+          title: 'Update Failed',
+          description: data.error || 'Failed to update campaign',
+          variant: 'error',
+        });
+      }
+    } catch (err) {
+      loadingToast.remove();
+      await alert({
+        title: 'Update Failed',
+        description: 'Network error. Please try again.',
+        variant: 'error',
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -195,16 +316,16 @@ export default function CampaignsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1">Recipients</label>
-              <select
+              <CustomSelect
                 value={form.recipientType}
-                onChange={(e) => setForm({ ...form, recipientType: e.target.value as 'staff' | 'subscribers' | 'all' })}
-                className="w-full px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
-              >
-                <option value="subscribers">Subscribers</option>
-                <option value="staff">Staff Only</option>
-                <option value="all">All (Staff + Subscribers)</option>
-              </select>
+                onChange={(value) => setForm({ ...form, recipientType: value as 'staff' | 'subscribers' | 'all' })}
+                options={[
+                  { value: 'subscribers', label: 'Subscribers' },
+                  { value: 'staff', label: 'Staff Only' },
+                  { value: 'all', label: 'All (Staff + Subscribers)' },
+                ]}
+                label="Recipients"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1">Content</label>
@@ -310,19 +431,32 @@ export default function CampaignsPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </Link>
-                    {campaign.status === 'draft' && canSend && (
-                      <button
-                        onClick={() => handleSend(campaign.id)}
-                        className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                        title="Send campaign"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
+                    {/* Edit button - available for draft and sending campaigns */}
+                    {(campaign.status === 'draft' || campaign.status === 'sending') && canEdit && (
+                      <>
+                        <button
+                          onClick={() => handleEdit(campaign)}
+                          className="p-2 text-brand-black/60 dark:text-brand-yellow/60 hover:bg-brand-green/10 dark:hover:bg-brand-yellow/10 rounded-lg transition-colors"
+                          title="Edit campaign"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        {canSend && (
+                          <button
+                            onClick={() => handleSend(campaign.id)}
+                            className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                            title="Send campaign"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                      </>
                     )}
-                    {(campaign.status === 'draft' || campaign.status === 'cancelled') && canDelete && (
+                    {/* Delete button - available for draft, sending, and cancelled campaigns */}
+                    {(campaign.status === 'draft' || campaign.status === 'sending' || campaign.status === 'cancelled') && canDelete && (
                       <button
                         onClick={() => handleDelete(campaign.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 text-brand-black/60 dark:text-brand-yellow/60 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
                         title="Delete campaign"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -335,6 +469,79 @@ export default function CampaignsPage() {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingCampaign && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={(e) => { if (e.target === e.currentTarget) setEditingCampaign(null); }}>
+          <div className="bg-white dark:bg-brand-black rounded-2xl border border-brand-green/10 dark:border-brand-yellow/10 shadow-xl max-w-lg w-full overflow-hidden">
+            <div className="bg-brand-green px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-bold text-base">Edit Campaign</h3>
+                <button
+                  onClick={() => setEditingCampaign(null)}
+                  className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1">Campaign Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={form.subject}
+                  onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1">Recipients</label>
+                <select
+                  value={form.recipientType}
+                  onChange={(e) => setForm({ ...form, recipientType: e.target.value as 'staff' | 'subscribers' | 'all' })}
+                  className="w-full px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
+                >
+                  <option value="subscribers">Subscribers</option>
+                  <option value="staff">Staff Only</option>
+                  <option value="all">All (Staff + Subscribers)</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCampaign(null)}
+                  className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900 text-sm text-brand-black dark:text-brand-yellow transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="flex-1 py-2.5 bg-brand-yellow text-brand-black font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                >
+                  {isUpdating ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><CheckCircle className="w-4 h-4" /> Save Changes</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog />
+      <AlertDialog />
     </div>
   );
 }

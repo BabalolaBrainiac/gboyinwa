@@ -110,6 +110,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const updates: Record<string, any> = {};
     if (name !== undefined) updates.name = name;
     if (subject !== undefined) updates.subject = subject;
+    if (body.recipient_type !== undefined) updates.recipient_type = body.recipient_type;
     if (contentHtml !== undefined) updates.content_html = contentHtml;
     if (contentText !== undefined) updates.content_text = contentText;
     if (scheduledAt !== undefined) {
@@ -163,10 +164,13 @@ export async function DELETE(_request: Request, { params }: Params) {
       return NextResponse.json({ error: 'campaign not found' }, { status: 404 });
     }
 
+    // Allow deletion of sending campaigns - they will be cancelled first
     if (existing.status === 'sending') {
-      return NextResponse.json({ 
-        error: 'cannot delete a campaign that is currently sending' 
-      }, { status: 400 });
+      // Update status to cancelled first
+      await supabase
+        .from('email_campaigns')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', params.id);
     }
 
     const { error } = await supabase

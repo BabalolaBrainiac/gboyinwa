@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, Mail, FileText, Calendar, Loader2 } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Mail, FileText, Calendar, Loader2, Megaphone, Eye, MousePointer } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { CustomSelect } from '@/components/ui/custom-select';
 
 interface DashboardMetrics {
   total_subscribers: number;
@@ -114,15 +115,16 @@ export default function AnalyticsPage() {
             Overview of your website metrics and performance
           </p>
         </div>
-        <select
-          value={days}
-          onChange={(e) => setDays(Number(e.target.value))}
-          className="px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-        </select>
+        <CustomSelect
+          value={String(days)}
+          onChange={(value) => setDays(Number(value))}
+          options={[
+            { value: '7', label: 'Last 7 days' },
+            { value: '30', label: 'Last 30 days' },
+            { value: '90', label: 'Last 90 days' },
+          ]}
+          className="w-40"
+        />
       </div>
 
       {/* Stats grid */}
@@ -164,6 +166,45 @@ export default function AnalyticsPage() {
           />
         )}
       </div>
+
+      {/* Campaign Performance */}
+      {canViewCamps && metrics && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-brand-black dark:text-brand-yellow mb-4">Campaign Performance</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-brand-black/50 rounded-xl border border-brand-green/10 dark:border-brand-yellow/10 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <Megaphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-sm text-brand-black/60 dark:text-brand-yellow/60">Total Campaigns</span>
+              </div>
+              <p className="text-2xl font-bold text-brand-black dark:text-brand-yellow">{metrics?.total_campaigns || 0}</p>
+              <p className="text-xs text-brand-black/40 dark:text-brand-yellow/40 mt-1">All time campaigns</p>
+            </div>
+            <div className="bg-white dark:bg-brand-black/50 rounded-xl border border-brand-green/10 dark:border-brand-yellow/10 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </div>
+                <span className="text-sm text-brand-black/60 dark:text-brand-yellow/60">Avg Open Rate</span>
+              </div>
+              <p className="text-2xl font-bold text-brand-black dark:text-brand-yellow">{metrics?.avg_open_rate?.toFixed(1) || '0.0'}%</p>
+              <p className="text-xs text-brand-black/40 dark:text-brand-yellow/40 mt-1">Industry avg: 21%</p>
+            </div>
+            <div className="bg-white dark:bg-brand-black/50 rounded-xl border border-brand-green/10 dark:border-brand-yellow/10 p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <MousePointer className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-sm text-brand-black/60 dark:text-brand-yellow/60">Avg Click Rate</span>
+              </div>
+              <p className="text-2xl font-bold text-brand-black dark:text-brand-yellow">{metrics?.avg_click_rate?.toFixed(1) || '0.0'}%</p>
+              <p className="text-xs text-brand-black/40 dark:text-brand-yellow/40 mt-1">Industry avg: 2.5%</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Engagement metrics */}
       {canViewCamps && metrics && (metrics.avg_open_rate > 0 || metrics.avg_click_rate > 0) && (

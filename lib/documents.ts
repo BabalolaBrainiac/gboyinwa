@@ -27,6 +27,7 @@ export interface Document {
   is_pitch_document: boolean;
   metadata: Record<string, any>;
   view_count: number;
+  share_count: number;
   created_at: string;
   updated_at: string;
   uploaded_by: string;
@@ -238,23 +239,23 @@ export async function deleteDocument(id: string): Promise<boolean> {
   return true;
 }
 
-// Share a document
+// Share a document with configurable expiration
 export async function shareDocument(
   documentId: string,
   sharedBy: string,
   sharedWithEmail: string,
   message?: string,
-  expiresInDays: number = 7
+  expiresInDays: number | 'never' = 7
 ): Promise<DocumentShare | null> {
   const supabase = getServiceClient();
 
   // Generate access token
   const accessToken = generateAccessToken();
 
-  // Calculate expiration
-  const expiresAt = expiresInDays > 0 
-    ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-    : null;
+  // Calculate expiration (null means never expires)
+  const expiresAt = expiresInDays === 'never' || expiresInDays <= 0
+    ? null
+    : new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from('document_shares')
@@ -277,8 +278,13 @@ export async function shareDocument(
   return data as DocumentShare;
 }
 
+// Extended share type that includes document
+type DocumentShareWithDoc = DocumentShare & {
+  document: Document;
+};
+
 // Get share by access token
-export async function getShareByToken(token: string): Promise<DocumentShare | null> {
+export async function getShareByToken(token: string): Promise<DocumentShareWithDoc | null> {
   const supabase = getServiceClient();
 
   const { data, error } = await supabase
@@ -297,7 +303,7 @@ export async function getShareByToken(token: string): Promise<DocumentShare | nu
     return null;
   }
 
-  return data as DocumentShare;
+  return data as DocumentShareWithDoc;
 }
 
 // Mark share as viewed
@@ -432,5 +438,209 @@ export async function getDocumentStats(): Promise<{
     totalViews: views?.length || 0,
     totalShares: shares?.length || 0,
     recentUploads: recentDocs?.length || 0,
+  };
+}
+
+// Get detailed share stats for a document
+export async function getDocumentShareStats(documentId: string): Promise<{
+  totalShares: number;
+  activeShares: number;
+  expiredShares: number;
+  viewedShares: number;
+  uniqueRecipients: number;
+  lastSharedAt: string | null;
+  firstSharedAt: string | null;
+} | null> {
+  const supabase = getServiceClient();
+
+  const { data, error } = await supabase
+    .rpc('get_document_share_stats', { p_document_id: documentId });
+
+  if (error) {
+    console.error('Error fetching share stats:', error);
+    return null;
+  }
+
+  return data as {
+    totalShares: number;
+    activeShares: number;
+    expiredShares: number;
+    viewedShares: number;
+    uniqueRecipients: number;
+    lastSharedAt: string | null;
+    firstSharedAt: string | null;
+  };
+}
+
+// ============================================
+// AUDIT LOGGING
+// ============================================
+
+export interface AuditLog {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_role: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  resource_name: string | null;
+  details: Record<string, any>;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  action_category: 'create' | 'update' | 'delete' | 'share' | 'view' | 'other';
+}
+
+// Create an audit log entry
+export async function createAuditLog({
+  userId,
+  userEmail,
+  userRole,
+  action,
+  resourceType,
+  resourceId,
+  resourceName,
+  details = {},
+  ipAddress,
+  userAgent,
+}: {
+  userId?: string;
+  userEmail?: string;
+  userRole?: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string;
+  resourceName?: string;
+  details?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<string | null> {
+  const supabase = getServiceClient();
+
+  const { data, error } = await supabase
+    .rpc('create_audit_log', {
+      p_user_id: userId || null,
+      p_user_email: userEmail || null,
+      p_user_role: userRole || null,
+      p_action: action,
+      p_resource_type: resourceType,
+      p_resource_id: resourceId || null,
+      p_resource_name: resourceName || null,
+      p_details: details,
+      p_ip_address: ipAddress || null,
+      p_user_agent: userAgent || null,
+    });
+
+  if (error) {
+    console.error('Error creating audit log:', error);
+    return null;
+  }
+
+  return data as string;
+}
+
+// Get audit logs with filters
+export async function getAuditLogs(options?: {
+  limit?: number;
+  offset?: number;
+  action?: string;
+  resourceType?: string;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<{ logs: AuditLog[]; total: number }> {
+  const supabase = getServiceClient();
+  
+  const limit = options?.limit || 50;
+  const offset = options?.offset || 0;
+
+  let query = supabase
+    .from('audit_log_summary')
+    .select('*', { count: 'exact' });
+
+  if (options?.action) {
+    query = query.eq('action', options.action);
+  }
+
+  if (options?.resourceType) {
+    query = query.eq('resource_type', options.resourceType);
+  }
+
+  if (options?.userId) {
+    query = query.eq('user_id', options.userId);
+  }
+
+  if (options?.startDate) {
+    query = query.gte('created_at', options.startDate);
+  }
+
+  if (options?.endDate) {
+    query = query.lte('created_at', options.endDate);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return { logs: [], total: 0 };
+  }
+
+  return {
+    logs: (data || []) as AuditLog[],
+    total: count || 0,
+  };
+}
+
+// Get audit stats summary
+export async function getAuditStats(): Promise<{
+  totalActions: number;
+  actionsToday: number;
+  actionsThisWeek: number;
+  mostActiveResource: string;
+}> {
+  const supabase = getServiceClient();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const { data: total, error: totalError } = await supabase
+    .from('audit_logs')
+    .select('id', { count: 'exact' });
+
+  const { data: todayCount, error: todayError } = await supabase
+    .from('audit_logs')
+    .select('id', { count: 'exact' })
+    .gte('created_at', today.toISOString());
+
+  const { data: weekCount, error: weekError } = await supabase
+    .from('audit_logs')
+    .select('id', { count: 'exact' })
+    .gte('created_at', weekAgo.toISOString());
+
+  // Get most active resource type
+  const { data: resourceStats } = await supabase
+    .from('audit_logs')
+    .select('resource_type')
+    .limit(1000);
+
+  const resourceCounts: Record<string, number> = {};
+  resourceStats?.forEach(log => {
+    resourceCounts[log.resource_type] = (resourceCounts[log.resource_type] || 0) + 1;
+  });
+
+  const mostActiveResource = Object.entries(resourceCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
+
+  return {
+    totalActions: total?.length || 0,
+    actionsToday: todayCount?.length || 0,
+    actionsThisWeek: weekCount?.length || 0,
+    mostActiveResource,
   };
 }

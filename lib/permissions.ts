@@ -29,6 +29,11 @@ export type PermissionManagement =
   | 'permissions:assign'
   | 'permissions:manage';
 
+// Audit & Logging Permissions
+export type AuditPermission =
+  | 'audit:view'
+  | 'audit:export';
+
 // Metrics & Analytics Permissions
 export type MetricsPermission =
   | 'metrics:view_dashboard'
@@ -78,7 +83,8 @@ export type Permission =
   | SubscriberPermission
   | CampaignPermission
   | BlogSubscriptionPermission
-  | DocumentPermission;
+  | DocumentPermission
+  | AuditPermission;
 
 // =============================================================================
 // ALL PERMISSIONS ARRAY
@@ -135,6 +141,9 @@ export const ALL_PERMISSIONS: Permission[] = [
   'documents:share',
   'documents:delete',
   'documents:present',
+  // Audit
+  'audit:view',
+  'audit:export',
 ];
 
 // =============================================================================
@@ -254,6 +263,15 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'documents:present',
     ],
   },
+  {
+    key: 'audit',
+    label: 'Audit & Logs',
+    description: 'View audit logs and system activity (Superadmin only)',
+    permissions: [
+      'audit:view',
+      'audit:export',
+    ],
+  },
 ];
 
 // =============================================================================
@@ -312,6 +330,9 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
   'documents:share': { label: 'Share Documents', description: 'Share documents via email with stakeholders' },
   'documents:delete': { label: 'Delete Documents', description: 'Delete uploaded documents' },
   'documents:present': { label: 'Present Documents', description: 'Present/pitch documents in fullscreen mode' },
+  // Audit
+  'audit:view': { label: 'View Audit Logs', description: 'View system audit logs and activity history' },
+  'audit:export': { label: 'Export Audit Logs', description: 'Export audit logs for compliance' },
 };
 
 // =============================================================================

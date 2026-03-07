@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { UsersRound, Search, Download, Plus, Trash2, Mail, CheckCircle, XCircle, Clock, Loader2, X, AlertCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { CustomSelect } from '@/components/ui/custom-select';
 
 interface Subscriber {
   id: string;
@@ -20,6 +22,7 @@ export default function SubscribersPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const permissions = ((session?.user as { permissions?: string[] })?.permissions ?? []) as Permission[];
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const canManage = hasPermission(role, permissions, 'subscribers:manage');
 
@@ -88,7 +91,14 @@ export default function SubscribersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this subscriber?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Subscriber?',
+      description: 'This will permanently remove the subscriber from the list. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/subscribers/${id}`, { method: 'DELETE' });
@@ -215,16 +225,17 @@ export default function SubscribersPage() {
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
           />
         </div>
-        <select
+        <CustomSelect
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-brand-black dark:text-brand-yellow focus:outline-none focus:ring-2 focus:ring-brand-green/50"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="unsubscribed">Unsubscribed</option>
-        </select>
+          onChange={setFilter}
+          options={[
+            { value: 'all', label: 'All Status' },
+            { value: 'active', label: 'Active' },
+            { value: 'pending', label: 'Pending' },
+            { value: 'unsubscribed', label: 'Unsubscribed' },
+          ]}
+          className="w-40"
+        />
         {canManage && (
           <>
             <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 hover:bg-brand-green/5 dark:hover:bg-brand-yellow/10 transition-colors">
@@ -417,6 +428,8 @@ export default function SubscribersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   );
 }

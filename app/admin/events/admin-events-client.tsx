@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 type Event = {
   id: string;
@@ -24,6 +25,7 @@ export function AdminEventsClient({ events: initial }: { events: Event[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,7 +54,14 @@ export function AdminEventsClient({ events: initial }: { events: Event[] }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this event?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Event?',
+      description: 'This will permanently remove the event. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setEvents((prev) => prev.filter((e) => e.id !== id));
@@ -145,6 +154,8 @@ export function AdminEventsClient({ events: initial }: { events: Event[] }) {
           </li>
         ))}
       </ul>
+
+      <ConfirmDialog />
     </div>
   );
 }

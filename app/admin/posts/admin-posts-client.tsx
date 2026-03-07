@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 type Post = {
   id: string;
@@ -20,6 +21,7 @@ export function AdminPostsClient({ posts: initial }: { posts: Post[] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +50,14 @@ export function AdminPostsClient({ posts: initial }: { posts: Post[] }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this post?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Post?',
+      description: 'This will permanently remove the post. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     const res = await fetch(`/api/admin/posts/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setPosts((prev) => prev.filter((p) => p.id !== id));
@@ -100,6 +109,8 @@ export function AdminPostsClient({ posts: initial }: { posts: Post[] }) {
           </li>
         ))}
       </ul>
+
+      <ConfirmDialog />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   Search, Edit2, Save, Camera, Loader2, AlertCircle,
   UserCircle,
 } from 'lucide-react';
+import { useAlert } from '@/components/ui/confirm-dialog';
 
 const PERMISSION_GROUPS = {
   'Content': ['posts:create', 'posts:edit', 'posts:delete', 'posts:publish'],
@@ -62,6 +63,7 @@ export function AdminUsersClient() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const { alert, AlertDialog } = useAlert();
 
   // Edit permissions
   const [editingPermsUser, setEditingPermsUser] = useState<string | null>(null);
@@ -181,7 +183,11 @@ export function AdminUsersClient() {
     const res = await fetch(`/api/admin/users/${deletingUser}`, { method: 'DELETE' });
     if (!res.ok) {
       const d = await res.json();
-      alert(d.error || 'Failed to delete user');
+      await alert({
+        title: 'Delete Failed',
+        description: d.error || 'Failed to delete user',
+        variant: 'error',
+      });
       return;
     }
     setUsers(prev => prev.filter(u => u.id !== deletingUser));
@@ -554,10 +560,17 @@ export function AdminUsersClient() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB'); return; }
+                      if (file.size > 5 * 1024 * 1024) { 
+                        await alert({
+                          title: 'File Too Large',
+                          description: 'Image must be under 5 MB',
+                          variant: 'error',
+                        });
+                        return; 
+                      }
                       const url = URL.createObjectURL(file);
                       setEditProfile(s => s ? { ...s, avatarFile: file, avatarPreview: url } : s);
                     }}
@@ -623,6 +636,8 @@ export function AdminUsersClient() {
           </div>
         </div>
       )}
+
+      <AlertDialog />
     </div>
   );
 }

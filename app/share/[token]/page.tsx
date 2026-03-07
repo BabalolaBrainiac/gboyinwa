@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { FileText, Download, Lock, Eye, AlertCircle, Clock } from 'lucide-react';
+import { FileText, Download, Lock, Eye, AlertCircle, Clock, FileSpreadsheet, Presentation, FileIcon } from 'lucide-react';
 
 interface ShareData {
   id: string;
@@ -70,11 +70,13 @@ export default function SharePage() {
       case 'pdf':
         return <div className="w-16 h-16 bg-red-50 rounded-xl flex items-center justify-center"><FileText className="w-8 h-8 text-red-600" /></div>;
       case 'spreadsheet':
-        return <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center"><span className="text-2xl">📊</span></div>;
+        return <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center"><FileSpreadsheet className="w-8 h-8 text-green-600" /></div>;
       case 'presentation':
-        return <div className="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center"><span className="text-2xl">📽️</span></div>;
+        return <div className="w-16 h-16 bg-orange-100 rounded-xl flex items-center justify-center"><Presentation className="w-8 h-8 text-orange-600" /></div>;
+      case 'document':
+        return <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center"><FileText className="w-8 h-8 text-blue-600" /></div>;
       default:
-        return <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center"><span className="text-2xl">📄</span></div>;
+        return <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center"><FileIcon className="w-8 h-8 text-gray-600" /></div>;
     }
   };
 
@@ -184,8 +186,7 @@ export default function SharePage() {
                     View Document
                   </button>
                   <a
-                    href={shareData.document.file_url}
-                    download
+                    href={`/api/share/${token}/download`}
                     className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <Download className="w-5 h-5" />
@@ -223,8 +224,7 @@ export default function SharePage() {
                 </div>
               </div>
               <a
-                href={shareData.document.file_url}
-                download
+                href={`/api/share/${token}/download`}
                 className="flex items-center gap-2 px-4 py-2 bg-brand-green text-white rounded-lg hover:opacity-90"
               >
                 <Download className="w-4 h-4" />
@@ -232,7 +232,7 @@ export default function SharePage() {
               </a>
             </div>
             
-            <div className="h-[calc(100vh-200px)]">
+            <div className="h-[calc(100vh-200px)] bg-gray-50">
               {shareData.document.file_category === 'image' ? (
                 <img
                   src={shareData.document.file_url}
@@ -241,26 +241,56 @@ export default function SharePage() {
                 />
               ) : shareData.document.file_type.includes('pdf') ? (
                 <iframe
-                  src={shareData.document.file_url}
+                  src={`${shareData.document.file_url}#toolbar=1&navpanes=0`}
                   className="w-full h-full"
                   title={shareData.document.title}
+                  sandbox="allow-scripts allow-same-origin"
                 />
               ) : shareData.document.file_category === 'video' ? (
                 <video
                   src={shareData.document.file_url}
                   controls
                   className="w-full h-full bg-black"
+                  controlsList="nodownload"
+                />
+              ) : shareData.document.file_category === 'presentation' || 
+                 shareData.document.file_type.includes('presentation') ||
+                 shareData.document.file_type.includes('powerpoint') ? (
+                // Office Online Viewer for PowerPoint
+                <iframe
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
+                  className="w-full h-full"
+                  title={shareData.document.title}
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                />
+              ) : shareData.document.file_category === 'spreadsheet' ||
+                 shareData.document.file_type.includes('spreadsheet') ||
+                 shareData.document.file_type.includes('excel') ? (
+                // Office Online Viewer for Excel
+                <iframe
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
+                  className="w-full h-full"
+                  title={shareData.document.title}
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                />
+              ) : shareData.document.file_category === 'document' ||
+                 shareData.document.file_type.includes('word') ? (
+                // Office Online Viewer for Word
+                <iframe
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
+                  className="w-full h-full"
+                  title={shareData.document.title}
+                  sandbox="allow-scripts allow-same-origin allow-forms"
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center p-8">
                   <AlertCircle className="w-16 h-16 text-gray-300 mb-4" />
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">Preview not available</h3>
                   <p className="text-gray-500 mb-4">
-                    This file type cannot be previewed in the browser.
+                    This file type cannot be previewed in the browser. Please download to view.
                   </p>
                   <a
-                    href={shareData.document.file_url}
-                    download
+                    href={`/api/share/${token}/download`}
                     className="flex items-center gap-2 px-6 py-3 bg-brand-yellow text-brand-black rounded-xl font-semibold hover:opacity-90"
                   >
                     <Download className="w-5 h-5" />

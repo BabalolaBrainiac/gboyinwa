@@ -84,7 +84,7 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { emails, message, expiresInDays = 7 } = body;
+    const { emails, message, expiresInDays = 7, neverExpires = false } = body;
 
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ error: 'At least one email address is required' }, { status: 400 });
@@ -92,6 +92,7 @@ export async function POST(
 
     const userId = (session.user as { id?: string }).id || '';
     const sharerName = (session.user as { displayName?: string }).displayName || 'Someone';
+    const userEmail = (session.user as { email?: string }).email || '';
 
     // Fetch document details for the email
     const supabase = getServiceClient();
@@ -107,10 +108,13 @@ export async function POST(
     const resendKey = process.env.RESEND_API_KEY;
     const resend = resendKey ? new Resend(resendKey) : null;
 
+    // Determine expiration setting
+    const expirationValue = neverExpires ? 'never' : (expiresInDays || 7);
+
     const results = await Promise.all(
       emails.map(async (email: string) => {
         try {
-          const share = await shareDocument(id, userId, email, message, expiresInDays);
+          const share = await shareDocument(id, userId, email, message, expirationValue);
           if (!share) return { email, success: false, error: 'Failed to create share record' };
 
           const shareUrl = `${BASE_URL}/share/${share.access_token}`;
@@ -134,13 +138,13 @@ export async function POST(
 
             if (emailErr) {
               console.warn(`[share] email to ${email} failed:`, emailErr);
-              return { email, success: true, emailSent: false, shareUrl };
+              return { email, success: true, emailSent: false, shareUrl, expiresAt: share.expires_at };
             }
           } else {
             console.warn('[share] RESEND_API_KEY not set — share record created but email not sent');
           }
 
-          return { email, success: true, emailSent: !!resend, shareUrl };
+          return { email, success: true, emailSent: !!resend, shareUrl, expiresAt: share.expires_at };
         } catch (err) {
           return { email, success: false, error: (err as Error).message };
         }
@@ -151,6 +155,29 @@ export async function POST(
     const failed = results.filter(r => !r.success);
     const emailsSent = results.filter(r => r.success && (r as { emailSent?: boolean }).emailSent).length;
 
+    // Create audit log for the share action
+    try {
+      const { createAuditLog } = await import('@/lib/documents');
+      await createAuditLog({
+        userId,
+        userEmail: userEmail,
+        userRole: role,
+        action: 'document:share',
+        resourceType: 'document',
+        resourceId: id,
+        resourceName: docTitle,
+        details: {
+          recipientCount: emails.length,
+          successfulShares: successful.length,
+          failedShares: failed.length,
+          expiration: neverExpires ? 'never' : `${expiresInDays} days`,
+          recipients: emails,
+        },
+      });
+    } catch (auditErr) {
+      console.warn('[share] failed to create audit log:', auditErr);
+    }
+
     return NextResponse.json({
       success: true,
       shared: successful.length,
@@ -158,6 +185,7 @@ export async function POST(
       emailsSkipped: successful.length - emailsSent,
       failed: failed.map(f => ({ email: f.email, error: (f as { error?: string }).error })),
       missingResend: !resend,
+      expiration: neverExpires ? 'never' : `${expiresInDays} days`,
     });
   } catch (err) {
     console.error('[share] error:', err);

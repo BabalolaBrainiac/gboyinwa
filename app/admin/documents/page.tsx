@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { hasPermission, type Permission } from '@/lib/permissions';
+import { useConfirm, useAlert } from '@/components/ui/confirm-dialog';
+import { CustomSelect } from '@/components/ui/custom-select';
 import {
   FileText,
   Upload,
@@ -29,8 +31,6 @@ import {
   ArrowLeft,
   Maximize2,
   Minimize2,
-  ChevronDown,
-  Tag,
 } from 'lucide-react';
 
 interface DocumentCategory {
@@ -55,6 +55,8 @@ interface Document {
   folder_path: string;
   is_pitch_document: boolean;
   metadata: Record<string, unknown>;
+  view_count: number;
+  share_count: number;
   created_at: string;
   uploader?: { display_name: string | null };
 }
@@ -97,12 +99,15 @@ export default function DocumentsPage() {
   const { data: session, status } = useSession();
   const role = (session?.user as { role?: string })?.role || '';
   const permissions = ((session?.user as { permissions?: string[] })?.permissions || []) as Permission[];
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const canView = hasPermission(role, permissions, 'documents:view');
   const canUpload = hasPermission(role, permissions, 'documents:upload');
   const canShare = hasPermission(role, permissions, 'documents:share');
   const canDelete = hasPermission(role, permissions, 'documents:delete');
   const canPresent = hasPermission(role, permissions, 'documents:present');
+  const isSuperadmin = role === 'superadmin';
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
@@ -111,6 +116,11 @@ export default function DocumentsPage() {
   const [selectedFolder, setSelectedFolder] = useState<string>('/');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // New folder modal state
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
   // Upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -149,6 +159,8 @@ export default function DocumentsPage() {
   const [sharing, setSharing] = useState(false);
   const [shareSuccess, setShareSuccess] = useState('');
   const [shareError, setShareError] = useState('');
+  const [shareExpirationDays, setShareExpirationDays] = useState<number>(7);
+  const [shareNeverExpires, setShareNeverExpires] = useState(false);
 
   // Presentation / viewer state
   const [presentingDoc, setPresentingDoc] = useState<Document | null>(null);
@@ -384,6 +396,8 @@ export default function DocumentsPage() {
       setUploadProgress(100);
       setUploadPulsing(false);
       setUploadedDoc(doc);
+      // Refresh documents list to show the new upload
+      fetchDocuments();
       setTimeout(() => setUploadStep('success'), 400);
     } catch (err) {
       stopTimers();
@@ -395,10 +409,49 @@ export default function DocumentsPage() {
 
   async function handleDelete(id: string) {
     if (!canDelete) return;
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
-    if (res.ok) fetchDocuments();
-    else alert('Failed to delete document');
+    const confirmed = await confirm({
+      title: 'Delete Document?',
+      description: 'This will permanently remove the document from the library. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    
+    // Show loading toast
+    const loadingToast = document.createElement('div');
+    loadingToast.className = 'fixed top-4 right-4 z-50 bg-brand-black dark:bg-white text-white dark:text-brand-black px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+    loadingToast.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Deleting...';
+    document.body.appendChild(loadingToast);
+    
+    try {
+      const res = await fetch(`/api/admin/documents/${id}`, { method: 'DELETE' });
+      loadingToast.remove();
+      
+      if (res.ok) {
+        // Show success toast
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-right';
+        toast.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Document deleted';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        fetchDocuments();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        await alert({
+          title: 'Delete Failed',
+          description: data.error || 'Failed to delete document. Please try again.',
+          variant: 'error',
+        });
+      }
+    } catch (err) {
+      loadingToast.remove();
+      await alert({
+        title: 'Delete Failed',
+        description: 'Network error. Please try again.',
+        variant: 'error',
+      });
+    }
   }
 
   async function handleShare(e: React.FormEvent) {
@@ -413,7 +466,12 @@ export default function DocumentsPage() {
       const res = await fetch(`/api/admin/documents/${sharingDoc.id}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails, message: shareMessage }),
+        body: JSON.stringify({ 
+          emails, 
+          message: shareMessage,
+          expiresInDays: shareExpirationDays,
+          neverExpires: shareNeverExpires,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -486,68 +544,21 @@ export default function DocumentsPage() {
       <div className="flex flex-wrap items-center gap-2">
 
         {/* Category dropdown — styled with color indicator */}
-        <div className="relative group">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black cursor-pointer hover:border-brand-green/40 dark:hover:border-brand-yellow/40 transition-colors"
-            style={activeCategory ? { borderColor: activeCategory.color + '60' } : {}}>
-            {/* Coloured dot */}
-            <span
-              className="w-2.5 h-2.5 rounded-full shrink-0 transition-colors"
-              style={{ backgroundColor: activeCategory ? activeCategory.color : '#6b7280' }}
-            />
-            <Tag className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none bg-transparent text-sm text-brand-black dark:text-brand-yellow outline-none cursor-pointer pr-5 min-w-[120px]"
-            >
-              <option value="all">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 pointer-events-none shrink-0" />
-          </div>
-
-          {/* Dropdown panel with coloured category cards */}
-          <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#111] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-30 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
-            <div className="p-1.5">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
-                  selectedCategory === 'all'
-                    ? 'bg-gray-100 dark:bg-gray-800 font-medium'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-900'
-                }`}
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-gray-400 shrink-0" />
-                <span>All Categories</span>
-                <span className="ml-auto text-xs text-gray-400">{documents.length}</span>
-              </button>
-
-              {categories.map(cat => {
-                const count = documents.filter(d => d.category?.id === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
-                      selectedCategory === cat.id
-                        ? 'font-medium'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-900'
-                    }`}
-                    style={selectedCategory === cat.id ? { backgroundColor: cat.color + '15', color: cat.color } : {}}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                    <span className="truncate">{cat.name}</span>
-                    {cat.description && (
-                      <span className="ml-auto text-xs text-gray-400 shrink-0">{count}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <CustomSelect
+          value={selectedCategory}
+          onChange={setSelectedCategory}
+          options={[
+            { value: 'all', label: 'All Categories', color: '#6b7280' },
+            ...categories.map(cat => ({
+              value: cat.id,
+              label: cat.name,
+              color: cat.color,
+            })),
+          ]}
+          placeholder="Select Category"
+          className="w-48"
+          triggerClassName="border-brand-green/20 dark:border-brand-yellow/20"
+        />
 
         {/* Active category pill with X */}
         {activeCategory && (
@@ -655,7 +666,18 @@ export default function DocumentsPage() {
                 )}
               </div>
               <h3 className="font-semibold text-sm mb-1 truncate text-brand-black dark:text-brand-yellow" title={doc.title}>{doc.title}</h3>
-              <p className="text-xs text-gray-400 mb-2">{formatFileSize(doc.file_size)}</p>
+              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                <span>{formatFileSize(doc.file_size)}</span>
+                {doc.share_count > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="flex items-center gap-1 text-brand-green dark:text-brand-yellow">
+                      <Share2 className="w-3 h-3" />
+                      {doc.share_count} share{doc.share_count !== 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
               {doc.category && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full mb-3 bg-gray-100 dark:bg-gray-800 text-brand-black dark:text-brand-yellow">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: doc.category.color }} />
@@ -697,6 +719,7 @@ export default function DocumentsPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">File</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Size</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Shares</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
@@ -726,6 +749,16 @@ export default function DocumentsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-400">{formatFileSize(doc.file_size)}</td>
+                  <td className="px-4 py-3">
+                    {doc.share_count > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-green dark:text-brand-yellow">
+                        <Share2 className="w-3 h-3" />
+                        {doc.share_count}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-400 whitespace-nowrap">{new Date(doc.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -834,26 +867,20 @@ export default function DocumentsPage() {
                   </div>
 
                   {/* Category — styled with color dots */}
-                  <div>
-                    <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow mb-1.5">Category</label>
-                    <div className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-brand-black">
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0 transition-colors"
-                        style={{ backgroundColor: categories.find(c => c.id === uploadCategoryId)?.color || '#d1d5db' }}
-                      />
-                      <select
-                        value={uploadCategoryId}
-                        onChange={(e) => setUploadCategoryId(e.target.value)}
-                        className="flex-1 appearance-none bg-transparent text-sm text-brand-black dark:text-brand-yellow focus:ring-0 outline-none cursor-pointer"
-                      >
-                        <option value="">No category</option>
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 pointer-events-none shrink-0" />
-                    </div>
-                  </div>
+                  <CustomSelect
+                    value={uploadCategoryId}
+                    onChange={setUploadCategoryId}
+                    options={[
+                      { value: '', label: 'No category', color: '#d1d5db' },
+                      ...categories.map(cat => ({
+                        value: cat.id,
+                        label: cat.name,
+                        color: cat.color,
+                      })),
+                    ]}
+                    label="Category"
+                    placeholder="Select category"
+                  />
 
                   <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
                     <button type="button" onClick={() => setUploadIsPitch(p => !p)}
@@ -1026,10 +1053,52 @@ export default function DocumentsPage() {
                     />
                   </div>
 
-                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-brand-yellow shrink-0" />
-                    Recipients will receive a secure link valid for 7 days
-                  </p>
+                  {/* Expiration Settings */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-brand-black dark:text-brand-yellow">
+                      Link Expiration
+                    </label>
+                    
+                    {/* Never expires checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={shareNeverExpires}
+                        onChange={(e) => setShareNeverExpires(e.target.checked)}
+                        className="w-4 h-4 rounded border-brand-green/20 text-brand-green focus:ring-brand-green"
+                      />
+                      <span className="text-sm text-brand-black/70 dark:text-brand-yellow/70">
+                        Never expires
+                      </span>
+                    </label>
+                    
+                    {/* Days selector (only show if not never expires) */}
+                    {!shareNeverExpires && (
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={shareExpirationDays}
+                          onChange={(e) => setShareExpirationDays(Number(e.target.value))}
+                          className="px-3 py-2 rounded-lg border border-brand-green/20 dark:border-brand-yellow/20 bg-white dark:bg-brand-black text-sm text-brand-black dark:text-brand-yellow focus:ring-2 focus:ring-brand-green outline-none"
+                        >
+                          <option value={1}>1 day</option>
+                          <option value={3}>3 days</option>
+                          <option value={7}>7 days</option>
+                          <option value={14}>14 days</option>
+                          <option value={30}>30 days</option>
+                          <option value={90}>90 days</option>
+                        </select>
+                        <span className="text-sm text-brand-black/60 dark:text-brand-yellow/60">
+                          Link will expire on {new Date(Date.now() + shareExpirationDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {shareNeverExpires && (
+                      <p className="text-sm text-brand-green dark:text-brand-yellow">
+                        Link will never expire. Recipients can access this document indefinitely.
+                      </p>
+                    )}
+                  </div>
 
                   {shareError && (
                     <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm">
@@ -1060,6 +1129,10 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog />
+      <AlertDialog />
 
       {/* ═══════════════════════════ IN-APP DOCUMENT VIEWER ═════════════════════════ */}
       {presentingDoc && (

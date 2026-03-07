@@ -70,6 +70,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const canViewCamps = canManageCampaigns(role, permissions);
   const canViewMetricsDash = canViewDashboard(role, permissions);
   const canViewDocs = hasPermission(role, permissions, 'documents:view');
+  const canViewAudit = hasPermission(role, permissions, 'audit:view');
   
   // All permission checks in one object for the sidebar
   const permissionsMap = {
@@ -81,6 +82,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     communications: canViewComms,
     analytics: canViewMetricsDash,
     documents: canViewDocs,
+    audit: canViewAudit,
   };
 
   return (
@@ -139,7 +141,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/events" 
               icon={<Calendar className="w-4 h-4" />}
               label="Events"
-              hasPermission={permissionsMap.events}
+              allowed={permissionsMap.events}
             />
             
             {/* Blog Posts - shows lock icon if no permission */}
@@ -147,7 +149,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/posts" 
               icon={<FileText className="w-4 h-4" />}
               label="Blog Posts"
-              hasPermission={permissionsMap.posts}
+              allowed={permissionsMap.posts}
             />
             
             {/* Users - shows lock icon if no permission */}
@@ -155,7 +157,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/users" 
               icon={<Users className="w-4 h-4" />}
               label="Users"
-              hasPermission={permissionsMap.users}
+              allowed={permissionsMap.users}
             />
             
             {/* Subscribers - shows lock icon if no permission */}
@@ -163,7 +165,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/subscribers" 
               icon={<UsersRound className="w-4 h-4" />}
               label="Subscribers"
-              hasPermission={permissionsMap.subscribers}
+              allowed={permissionsMap.subscribers}
             />
             
             {/* Campaigns - shows lock icon if no permission */}
@@ -171,7 +173,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/campaigns" 
               icon={<Megaphone className="w-4 h-4" />}
               label="Campaigns"
-              hasPermission={permissionsMap.campaigns}
+              allowed={permissionsMap.campaigns}
             />
             
             {/* Communications - shows lock icon if no permission */}
@@ -179,7 +181,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/communications" 
               icon={<Mail className="w-4 h-4" />}
               label="Communications"
-              hasPermission={permissionsMap.communications}
+              allowed={permissionsMap.communications}
             />
             
             {/* Analytics - shows lock icon if no permission */}
@@ -187,7 +189,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/analytics" 
               icon={<BarChart3 className="w-4 h-4" />}
               label="Analytics"
-              hasPermission={permissionsMap.analytics}
+              allowed={permissionsMap.analytics}
             />
             
             {/* Documents - shows lock icon if no permission */}
@@ -195,7 +197,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/documents" 
               icon={<FolderOpen className="w-4 h-4" />}
               label="Documents"
-              hasPermission={permissionsMap.documents}
+              allowed={permissionsMap.documents}
+            />
+            
+            {/* Audit Logs - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/audit-logs" 
+              icon={<Shield className="w-4 h-4" />}
+              label="Audit Logs"
+              allowed={permissionsMap.audit}
             />
           </nav>
           

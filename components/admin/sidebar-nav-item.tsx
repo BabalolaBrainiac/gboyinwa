@@ -8,14 +8,14 @@ interface SidebarNavItemProps {
   href: string;
   icon: React.ReactNode;
   label: string;
-  hasPermission: boolean;
+  allowed: boolean;
 }
 
-export function SidebarNavItem({ href, icon, label, hasPermission }: SidebarNavItemProps) {
+export function SidebarNavItem({ href, icon, label, allowed }: SidebarNavItemProps) {
   const [showModal, setShowModal] = useState(false);
 
   // If user has permission, render normal link
-  if (hasPermission) {
+  if (allowed) {
     return (
       <Link
         href={href}

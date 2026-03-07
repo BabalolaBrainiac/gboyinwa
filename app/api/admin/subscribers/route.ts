@@ -47,7 +47,7 @@ export async function GET(request: Request) {
   try {
     let query = supabase
       .from('subscribers')
-      .select('id, status, source, confirmed_at, unsubscribed_at, created_at, updated_at', { count: 'exact' });
+      .select('id, email_hash, first_name, last_name, status, source, confirmed_at, unsubscribed_at, created_at', { count: 'exact' });
 
     if (status) {
       query = query.eq('status', status);
