@@ -325,6 +325,42 @@ export async function getSignedFileUrl(key: string, expiresInSeconds = 3600): Pr
   return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
 }
 
+// Generate a presigned PUT URL so the browser can upload directly to R2
+export function buildR2Key(
+  fileName: string,
+  category: string = 'general',
+  folderPath: string = '/',
+): string {
+  const timestamp = Date.now();
+  const sanitizedName = sanitizeFileName(fileName.replace(/\.[^/.]+$/, ''));
+  const extension = fileName.split('.').pop()?.toLowerCase() || 'bin';
+  const uniqueFileName = `${timestamp}_${sanitizedName}.${extension}`;
+  const normalizedFolder = folderPath === '/' ? '' : folderPath.replace(/^\//, '').replace(/\/$/, '');
+  return normalizedFolder
+    ? `${category}/${normalizedFolder}/${uniqueFileName}`
+    : `${category}/${uniqueFileName}`;
+}
+
+export function r2KeyToPublicUrl(key: string): string {
+  return R2_PUBLIC_URL
+    ? `${R2_PUBLIC_URL}/${key}`
+    : `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
+}
+
+export async function getPresignedPutUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 3600,
+): Promise<string> {
+  const client = getR2Client();
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+}
+
 // Delete file from R2
 export async function deleteFromR2(key: string): Promise<void> {
   console.log(`[R2] Deleting key: ${key}`);

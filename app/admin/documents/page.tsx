@@ -350,62 +350,98 @@ export default function DocumentsPage() {
       setUploadElapsed(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
 
-    let fakeProgress = 0;
-    progressIntervalRef.current = setInterval(() => {
-      fakeProgress += Math.random() * 10 + 2;
-      if (fakeProgress >= 85) {
-        fakeProgress = 85;
-        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-        setUploadPulsing(true);
-      }
-      setUploadProgress(Math.floor(fakeProgress));
-    }, 200);
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
-
     const stopTimers = () => {
-      clearTimeout(timeoutId);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
     };
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('title', uploadTitle.trim());
-      if (uploadDescription.trim()) formData.append('description', uploadDescription.trim());
-      if (uploadCategoryId) formData.append('category_id', uploadCategoryId);
-      formData.append('folder_path', selectedFolder);
-      formData.append('is_pitch', String(uploadIsPitch));
-
-      const res = await fetch('/api/admin/documents', {
+      // Step 1: Get presigned URL from server (tiny JSON request — no Vercel payload limit)
+      const presignRes = await fetch('/api/admin/documents/presign', {
         method: 'POST',
-        body: formData,
-        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: uploadFile.name,
+          contentType: uploadFile.type,
+          fileSize: uploadFile.size,
+          categoryId: uploadCategoryId || undefined,
+          folderPath: selectedFolder,
+        }),
+      });
+      if (!presignRes.ok) {
+        let errMsg = 'Failed to initiate upload';
+        try { errMsg = (await presignRes.json()).error || errMsg; } catch {}
+        stopTimers();
+        setUploadError(errMsg);
+        setUploadStep('error');
+        return;
+      }
+      const { uploadUrl, key, publicUrl } = await presignRes.json();
+
+      // Step 2: Upload directly to R2 via presigned URL (bypasses Vercel entirely)
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        abortControllerRef.current = { abort: () => xhr.abort() } as AbortController;
+
+        xhr.upload.addEventListener('progress', (ev) => {
+          if (ev.lengthComputable) {
+            setUploadProgress(Math.floor((ev.loaded / ev.total) * 90));
+          }
+        });
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`R2 upload failed (HTTP ${xhr.status})`));
+          }
+        });
+        xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+        xhr.addEventListener('abort', () => reject(new DOMException('Upload cancelled', 'AbortError')));
+
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('Content-Type', uploadFile.type);
+        xhr.send(uploadFile);
+      });
+
+      setUploadProgress(95);
+      setUploadPulsing(true);
+
+      // Step 3: Save document record to DB (small JSON — no payload issue)
+      const completeRes = await fetch('/api/admin/documents/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key,
+          title: uploadTitle.trim(),
+          description: uploadDescription.trim() || undefined,
+          file_name: uploadFile.name,
+          file_type: uploadFile.type,
+          file_size: uploadFile.size,
+          category_id: uploadCategoryId || undefined,
+          folder_path: selectedFolder,
+          is_pitch: uploadIsPitch,
+        }),
       });
       stopTimers();
 
-      if (!res.ok) {
-        let errMsg = 'Upload failed';
-        try { errMsg = (await res.json()).error || errMsg; } catch {}
+      if (!completeRes.ok) {
+        let errMsg = 'File uploaded but failed to save record';
+        try { errMsg = (await completeRes.json()).error || errMsg; } catch {}
         setUploadError(errMsg);
         setUploadStep('error');
         return;
       }
 
-      const doc = await res.json();
+      const doc = await completeRes.json();
       setUploadProgress(100);
       setUploadPulsing(false);
       setUploadedDoc(doc);
-      // Refresh documents list to show the new upload
       fetchDocuments();
       setTimeout(() => setUploadStep('success'), 400);
     } catch (err) {
       stopTimers();
       const isAbort = err instanceof DOMException && err.name === 'AbortError';
-      setUploadError(isAbort ? 'Upload timed out — file may be too large or connection is slow' : 'Network error — please try again');
+      setUploadError(isAbort ? 'Upload cancelled' : 'Network error — please try again');
       setUploadStep('error');
     }
   }
