@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions, hasPermission } from '@/lib/auth';
 import { getDocuments, createDocument, getDocumentCategories, searchDocuments } from '@/lib/documents';
-import { uploadToR2, validateUpload, formatFileSize } from '@/lib/r2';
+import { uploadToR2, uploadStreamToR2, validateUpload, formatFileSize } from '@/lib/r2';
 
 export const dynamic = 'force-dynamic';
 // Allow up to 5 minutes for large file uploads on serverless
 export const maxDuration = 300;
+
+// Disable body parser to handle large file uploads (bypasses Vercel's default 4.5MB limit)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 // ── In-memory category cache (categories change rarely) ──────────────────────
 let categoriesCache: { data: unknown[]; expiresAt: number } | null = null;
@@ -107,27 +114,15 @@ export async function POST(request: NextRequest) {
 
     t(`File received: "${file.name}", size: ${formatFileSize(file.size)}, type: "${file.type}"`);
 
-    // ── Read buffer ───────────────────────────────────────────────────────────
-    t('Reading file buffer...');
-    let buffer: Buffer;
-    try {
-      const bytes = await file.arrayBuffer();
-      buffer = Buffer.from(bytes);
-    } catch (err) {
-      t(`Failed to read file buffer: ${(err as Error).message}`);
-      return NextResponse.json({ error: 'Failed to read file data.' }, { status: 400 });
+    // ── Size pre-check (fail fast for files that are definitely too large) ─────
+    const MAX_SIZE = 500 * 1024 * 1024; // 500 MB max
+    if (file.size > MAX_SIZE) {
+      t(`Rejected — file too large: ${formatFileSize(file.size)}`);
+      return NextResponse.json(
+        { error: `File too large (${formatFileSize(file.size)}). Max allowed: ${formatFileSize(MAX_SIZE)}.` },
+        { status: 413 }
+      );
     }
-    t(`Buffer read OK — ${formatFileSize(buffer.length)}`);
-
-    // ── Validate ──────────────────────────────────────────────────────────────
-    t('Validating file...');
-    const MAX_SIZE = 200 * 1024 * 1024; // 200 MB
-    const validation = validateUpload(file.name, file.type, buffer, MAX_SIZE);
-    if (!validation.valid) {
-      t(`Validation failed: ${validation.error}`);
-      return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
-    t('Validation OK');
 
     // ── Resolve category slug ─────────────────────────────────────────────────
     let categorySlug = 'general';
@@ -150,13 +145,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── Upload to R2 ──────────────────────────────────────────────────────────
+    // ── Upload to R2 using streaming for large files ──────────────────────────
     t(`Starting R2 upload — bucket: ${process.env.R2_BUCKET_NAME}, category: ${categorySlug}`);
     const uploadStart = Date.now();
 
     let url: string, key: string;
     try {
-      ({ url, key } = await uploadToR2(buffer, file.name, file.type, categorySlug, folderPath));
+      // Use streaming upload for files > 10MB to reduce memory usage
+      const STREAM_THRESHOLD = 10 * 1024 * 1024; // 10 MB
+      
+      if (file.size > STREAM_THRESHOLD) {
+        t('Using streaming upload for large file...');
+        ({ url, key } = await uploadStreamToR2(
+          file.stream() as unknown as ReadableStream,
+          file.name,
+          file.type,
+          file.size,
+          categorySlug,
+          folderPath
+        ));
+      } else {
+        // For small files, use the buffer-based upload
+        t('Reading file buffer for small file upload...');
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        
+        // ── Validate ──────────────────────────────────────────────────────────
+        t('Validating file...');
+        const validation = validateUpload(file.name, file.type, buffer, MAX_SIZE);
+        if (!validation.valid) {
+          t(`Validation failed: ${validation.error}`);
+          return NextResponse.json({ error: validation.error }, { status: 400 });
+        }
+        t('Validation OK');
+        
+        ({ url, key } = await uploadToR2(buffer, file.name, file.type, categorySlug, folderPath));
+      }
     } catch (err) {
       const msg = (err as Error).message;
       t(`R2 upload FAILED after ${((Date.now() - uploadStart) / 1000).toFixed(1)}s: ${msg}`);

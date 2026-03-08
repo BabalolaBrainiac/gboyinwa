@@ -489,7 +489,7 @@ export interface AuditLog {
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
-  action_category: 'create' | 'update' | 'delete' | 'share' | 'view' | 'other';
+  action_category?: 'create' | 'update' | 'delete' | 'share' | 'view' | 'other';
 }
 
 // Create an audit log entry
@@ -540,6 +540,16 @@ export async function createAuditLog({
   return data as string;
 }
 
+// Helper to compute action category from action string
+function getActionCategory(action: string): 'create' | 'update' | 'delete' | 'share' | 'view' | 'other' {
+  if (action.endsWith(':create')) return 'create';
+  if (action.endsWith(':update')) return 'update';
+  if (action.endsWith(':delete')) return 'delete';
+  if (action.endsWith(':share')) return 'share';
+  if (action.endsWith(':view')) return 'view';
+  return 'other';
+}
+
 // Get audit logs with filters
 export async function getAuditLogs(options?: {
   limit?: number;
@@ -555,8 +565,9 @@ export async function getAuditLogs(options?: {
   const limit = options?.limit || 50;
   const offset = options?.offset || 0;
 
+  // Query the audit_logs table directly (audit_log_summary view may not exist in some deployments)
   let query = supabase
-    .from('audit_log_summary')
+    .from('audit_logs')
     .select('*', { count: 'exact' });
 
   if (options?.action) {
@@ -588,8 +599,14 @@ export async function getAuditLogs(options?: {
     return { logs: [], total: 0 };
   }
 
+  // Compute action_category from action since we're querying the base table
+  const logsWithCategory = (data || []).map((log: any) => ({
+    ...log,
+    action_category: getActionCategory(log.action),
+  }));
+
   return {
-    logs: (data || []) as AuditLog[],
+    logs: logsWithCategory as AuditLog[],
     total: count || 0,
   };
 }

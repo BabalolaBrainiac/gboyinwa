@@ -4,6 +4,10 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  UploadPartCommand,
+  CreateMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
@@ -131,6 +135,181 @@ export async function uploadToR2(
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`[R2:${uploadId}] Upload complete in ${elapsed}s — key: ${key}`);
+
+  const url = R2_PUBLIC_URL
+    ? `${R2_PUBLIC_URL}/${key}`
+    : `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
+
+  return { url, key };
+}
+
+// Upload file stream to R2 using multipart upload for large files
+export async function uploadStreamToR2(
+  stream: ReadableStream,
+  fileName: string,
+  contentType: string,
+  fileSize: number,
+  category: string = 'general',
+  folderPath: string = '/',
+): Promise<{ url: string; key: string }> {
+  const uploadId = Math.random().toString(36).slice(2, 8);
+  const sizeMB = (fileSize / 1024 / 1024).toFixed(2);
+
+  console.log(`[R2:${uploadId}] Stream upload start — file: "${fileName}", size: ${sizeMB}MB, type: ${contentType}, category: ${category}`);
+
+  const client = getR2Client();
+
+  const timestamp = Date.now();
+  const sanitizedName = sanitizeFileName(fileName.replace(/\.[^/.]+$/, ''));
+  const extension = fileName.split('.').pop()?.toLowerCase() || 'bin';
+  const uniqueFileName = `${timestamp}_${sanitizedName}.${extension}`;
+
+  const normalizedFolder = folderPath === '/' ? '' : folderPath.replace(/^\//, '').replace(/\/$/, '');
+  const key = normalizedFolder
+    ? `${category}/${normalizedFolder}/${uniqueFileName}`
+    : `${category}/${uniqueFileName}`;
+
+  console.log(`[R2:${uploadId}] Uploading to key: ${key}`);
+
+  // Encode filename for safe HTTP header value
+  const safeOriginalName = Buffer.from(fileName).toString('base64');
+
+  // For small files (< 100MB), use single-part upload with streaming
+  const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100 MB
+  
+  if (fileSize < MULTIPART_THRESHOLD) {
+    // Read stream into buffer (for smaller files)
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalLength = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      totalLength += value.length;
+    }
+
+    // Combine chunks into single buffer
+    const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+    
+    const startTime = Date.now();
+    try {
+      await client.send(new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+        ContentLength: buffer.length,
+        Metadata: {
+          'original-name': safeOriginalName,
+          'uploaded-at': new Date().toISOString(),
+        },
+      }));
+    } catch (err: unknown) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const e = err as { name?: string; Code?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+      console.error(`[R2:${uploadId}] Upload FAILED after ${elapsed}s`);
+      console.error(`[R2:${uploadId}] Error code: ${e.Code || e.name}`);
+      console.error(`[R2:${uploadId}] HTTP status: ${e.$metadata?.httpStatusCode}`);
+      console.error(`[R2:${uploadId}] Message: ${e.message}`);
+      throw new Error(`R2 upload failed: ${e.message}`);
+    }
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[R2:${uploadId}] Upload complete in ${elapsed}s — key: ${key}`);
+  } else {
+    // Multipart upload for large files (100MB+)
+    console.log(`[R2:${uploadId}] Using multipart upload for large file...`);
+    const startTime = Date.now();
+    
+    let multipartUploadId: string;
+    try {
+      const createResponse = await client.send(new CreateMultipartUploadCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        ContentType: contentType,
+        Metadata: {
+          'original-name': safeOriginalName,
+          'uploaded-at': new Date().toISOString(),
+        },
+      }));
+      multipartUploadId = createResponse.UploadId!;
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string };
+      throw new Error(`Failed to initiate multipart upload: ${e.message}`);
+    }
+
+    const partSize = 10 * 1024 * 1024; // 10 MB parts
+    const parts: { ETag: string; PartNumber: number }[] = [];
+    let partNumber = 1;
+
+    try {
+      const reader = stream.getReader();
+      let buffer = Buffer.alloc(0);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (value) {
+          buffer = Buffer.concat([buffer, Buffer.from(value)]);
+        }
+
+        // Upload part when buffer reaches part size or stream ends
+        if (buffer.length >= partSize || (done && buffer.length > 0)) {
+          const uploadBuffer = buffer.slice(0, partSize);
+          buffer = buffer.slice(partSize);
+
+          console.log(`[R2:${uploadId}] Uploading part ${partNumber} (${formatFileSize(uploadBuffer.length)})...`);
+          
+          const partResponse = await client.send(new UploadPartCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: key,
+            UploadId: multipartUploadId,
+            PartNumber: partNumber,
+            Body: uploadBuffer,
+          }));
+
+          parts.push({
+            ETag: partResponse.ETag!,
+            PartNumber: partNumber,
+          });
+
+          console.log(`[R2:${uploadId}] Part ${partNumber} uploaded successfully`);
+          partNumber++;
+        }
+
+        if (done) break;
+      }
+
+      // Complete multipart upload
+      console.log(`[R2:${uploadId}] Completing multipart upload (${parts.length} parts)...`);
+      await client.send(new CompleteMultipartUploadCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: key,
+        UploadId: multipartUploadId,
+        MultipartUpload: { Parts: parts },
+      }));
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`[R2:${uploadId}] Multipart upload complete in ${elapsed}s — key: ${key}`);
+
+    } catch (err: unknown) {
+      // Abort multipart upload on error
+      console.error(`[R2:${uploadId}] Multipart upload failed, aborting...`);
+      try {
+        await client.send(new AbortMultipartUploadCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: key,
+          UploadId: multipartUploadId,
+        }));
+      } catch (abortErr) {
+        console.error(`[R2:${uploadId}] Failed to abort multipart upload:`, abortErr);
+      }
+      const e = err as { name?: string; message?: string };
+      throw new Error(`Multipart upload failed: ${e.message}`);
+    }
+  }
 
   const url = R2_PUBLIC_URL
     ? `${R2_PUBLIC_URL}/${key}`

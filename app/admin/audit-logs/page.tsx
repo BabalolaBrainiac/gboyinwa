@@ -34,7 +34,7 @@ interface AuditLog {
   details: Record<string, any>;
   ip_address: string | null;
   created_at: string;
-  action_category: 'create' | 'update' | 'delete' | 'share' | 'view' | 'other';
+  action_category?: 'create' | 'update' | 'delete' | 'share' | 'view' | 'other';
 }
 
 interface AuditStats {
@@ -226,7 +226,7 @@ export default function AuditLogsPage() {
                     <tr key={log.id} className="hover:bg-brand-green/5 dark:hover:bg-brand-yellow/5 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {actionIcons[log.action_category] || actionIcons.other}
+                          {actionIcons[log.action_category || 'other']}
                           <span className="text-sm font-medium text-brand-black dark:text-brand-yellow">
                             {getActionLabel(log.action)}
                           </span>

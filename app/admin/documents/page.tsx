@@ -172,7 +172,10 @@ export default function DocumentsPage() {
   const fetchDocuments = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (selectedCategory !== 'all') params.append('category', selectedCategory);
+      // Only send category if it's not 'all' or 'pitch' (pitch is filtered client-side)
+      if (selectedCategory !== 'all' && selectedCategory !== 'pitch') {
+        params.append('category', selectedCategory);
+      }
       if (selectedFolder !== '/') params.append('folder', selectedFolder);
       if (search) params.append('search', search);
 
