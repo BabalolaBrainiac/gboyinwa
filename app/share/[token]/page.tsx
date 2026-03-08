@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { FileText, Download, Lock, Eye, AlertCircle, Clock, FileSpreadsheet, Presentation, FileIcon } from 'lucide-react';
+import { FileText, Download, Lock, Eye, AlertCircle, Clock, FileSpreadsheet, Presentation, FileIcon, Loader2 } from 'lucide-react';
+import { SlideViewer } from '@/components/slide-viewer';
+
+const SLIDE_MAX_BYTES = 25 * 1024 * 1024;
 
 interface ShareData {
   id: string;
@@ -15,6 +18,7 @@ interface ShareData {
     file_size: number;
     file_type: string;
     file_category: string;
+    metadata: Record<string, unknown>;
   };
   shared_by: {
     display_name: string | null;
@@ -32,6 +36,8 @@ export default function SharePage() {
   const [error, setError] = useState<string | null>(null);
   const [shareData, setShareData] = useState<ShareData | null>(null);
   const [viewStarted, setViewStarted] = useState(false);
+  const [slideUrls, setSlideUrls] = useState<string[]>([]);
+  const [slideLoading, setSlideLoading] = useState(false);
 
   useEffect(() => {
     fetchShareData();
@@ -54,11 +60,45 @@ export default function SharePage() {
     }
   };
 
+  function isLargeOfficeShare(doc: ShareData['document']): boolean {
+    const mime = doc.file_type;
+    const name = doc.file_name.toLowerCase();
+    const isOffice =
+      mime.includes('presentationml') || mime.includes('powerpoint') ||
+      mime.includes('spreadsheetml')  || mime.includes('excel')      ||
+      mime.includes('wordprocessingml') || mime.includes('word')     ||
+      mime.includes('opendocument')   ||
+      name.endsWith('.pptx') || name.endsWith('.ppt') ||
+      name.endsWith('.xlsx') || name.endsWith('.xls') ||
+      name.endsWith('.docx') || name.endsWith('.doc') ||
+      name.endsWith('.odp')  || name.endsWith('.ods') || name.endsWith('.odt');
+    return isOffice && doc.file_size > SLIDE_MAX_BYTES;
+  }
+
+  async function loadShareSlides() {
+    setSlideLoading(true);
+    try {
+      const res = await fetch(`/api/share/${token}/slides`);
+      if (res.ok) {
+        const data = await res.json();
+        setSlideUrls(data.urls ?? []);
+      }
+    } finally {
+      setSlideLoading(false);
+    }
+  }
+
   const handleView = () => {
     if (!shareData) return;
     setViewStarted(true);
-    // Track view
     fetch(`/api/share/${token}/view`, { method: 'POST' }).catch(console.error);
+    // Load slide previews for large office files if already converted
+    if (isLargeOfficeShare(shareData.document)) {
+      const previews = shareData.document.metadata?.slide_previews as { keys?: string[] } | undefined;
+      if (previews?.keys?.length) {
+        loadShareSlides();
+      }
+    }
   };
 
   const getFileIcon = (category: string) => {
@@ -253,10 +293,35 @@ export default function SharePage() {
                   className="w-full h-full bg-black"
                   controlsList="nodownload"
                 />
-              ) : shareData.document.file_category === 'presentation' || 
+              ) : isLargeOfficeShare(shareData.document) ? (
+                // Large office file — use slide previews if converted, else fallback
+                slideLoading ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 text-white/40 animate-spin mx-auto mb-2" />
+                      <p className="text-white/50 text-sm">Loading slides…</p>
+                    </div>
+                  </div>
+                ) : slideUrls.length > 0 ? (
+                  <SlideViewer urls={slideUrls} title={shareData.document.title} />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gray-900">
+                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-white font-semibold mb-1">Preview not available</p>
+                    <p className="text-gray-400 text-sm mb-4">This file is too large to preview online. Download to view.</p>
+                    <a
+                      href={`/api/share/${token}/download`}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-brand-yellow text-brand-black rounded-xl font-semibold hover:opacity-90"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download to View
+                    </a>
+                  </div>
+                )
+              ) : shareData.document.file_category === 'presentation' ||
                  shareData.document.file_type.includes('presentation') ||
                  shareData.document.file_type.includes('powerpoint') ? (
-                // Office Online Viewer for PowerPoint
+                // Office Online Viewer for PowerPoint (small files only)
                 <iframe
                   src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
                   className="w-full h-full"
@@ -266,7 +331,7 @@ export default function SharePage() {
               ) : shareData.document.file_category === 'spreadsheet' ||
                  shareData.document.file_type.includes('spreadsheet') ||
                  shareData.document.file_type.includes('excel') ? (
-                // Office Online Viewer for Excel
+                // Office Online Viewer for Excel (small files only)
                 <iframe
                   src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
                   className="w-full h-full"
@@ -275,7 +340,7 @@ export default function SharePage() {
                 />
               ) : shareData.document.file_category === 'document' ||
                  shareData.document.file_type.includes('word') ? (
-                // Office Online Viewer for Word
+                // Office Online Viewer for Word (small files only)
                 <iframe
                   src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(shareData.document.file_url)}`}
                   className="w-full h-full"

@@ -22,6 +22,7 @@ import {
   Grid,
   List,
   ChevronRight,
+  ChevronLeft,
   FolderOpen,
   Image,
   Video,
@@ -32,6 +33,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
+import { SlideViewer } from '@/components/slide-viewer';
 
 interface DocumentCategory {
   id: string;
@@ -80,6 +82,23 @@ function DocTypeIcon({ doc, size = 'md' }: { doc: Document; size?: 'sm' | 'md' |
   if (cat === 'spreadsheet') return <FileSpreadsheet className={`${cls} text-green-600`} />;
   if (cat === 'presentation') return <Presentation className={`${cls} text-orange-500`} />;
   return <FileIcon className={`${cls} text-gray-400`} />;
+}
+
+const SLIDE_MAX_BYTES = 25 * 1024 * 1024; // 25 MB — Office Online viewer limit
+
+function isLargeOfficeDoc(doc: Document): boolean {
+  const mime = doc.file_type;
+  const name = doc.file_name.toLowerCase();
+  const isOffice =
+    mime.includes('presentationml') || mime.includes('powerpoint') ||
+    mime.includes('spreadsheetml')  || mime.includes('excel')      ||
+    mime.includes('wordprocessingml') || mime.includes('word')     ||
+    mime.includes('opendocument')   ||
+    name.endsWith('.pptx') || name.endsWith('.ppt') ||
+    name.endsWith('.xlsx') || name.endsWith('.xls') ||
+    name.endsWith('.docx') || name.endsWith('.doc') ||
+    name.endsWith('.odp')  || name.endsWith('.ods') || name.endsWith('.odt');
+  return isOffice && doc.file_size > SLIDE_MAX_BYTES;
 }
 
 function MimeIcon({ mimeType, size = 'md' }: { mimeType: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -169,6 +188,11 @@ export default function DocumentsPage() {
   const [signedUrlError, setSignedUrlError] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Slide preview state — used for large Office files instead of the Online viewer
+  const [slideUrls, setSlideUrls] = useState<string[]>([]);
+  const [slideConverting, setSlideConverting] = useState(false);
+  const [slideError, setSlideError] = useState('');
+
   const fetchDocuments = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -224,44 +248,98 @@ export default function DocumentsPage() {
     setPresentingDoc(doc);
     setSignedUrlError('');
     setCsvData([]);
+    setSlideUrls([]);
+    setSlideError('');
 
+    // Pre-set converting state immediately so the UI shows the right loading message
+    const isLarge = isLargeOfficeDoc(doc);
+    const existingSlides = (doc.metadata?.slide_previews as { keys?: string[] } | undefined)?.keys;
+    setSlideConverting(isLarge && !existingSlides?.length);
+
+    // Always fetch the signed URL — needed for the Download button in the toolbar
     const now = Date.now();
     const cached = signedUrlCacheRef.current.get(doc.id);
     if (cached && cached.expiresAt > now) {
       setSignedUrl(cached.url);
       setSignedUrlLoading(false);
-      // Kick off CSV fetch if needed (uses cached url)
-      if (cached.fileType === 'text/csv' || doc.file_name.endsWith('.csv')) {
+      if (!isLarge && (cached.fileType === 'text/csv' || doc.file_name.endsWith('.csv'))) {
         fetchCsv(cached.url);
       }
-      return;
+    } else {
+      setSignedUrl(null);
+      setSignedUrlLoading(true);
+      try {
+        const res = await fetch(`/api/admin/documents/${doc.id}/view`);
+        if (!res.ok) {
+          const err = await res.json();
+          setSignedUrlError(err.error || 'Could not load document');
+        } else {
+          const data = await res.json();
+          setSignedUrl(data.signedUrl);
+          signedUrlCacheRef.current.set(doc.id, {
+            url: data.signedUrl,
+            fileType: data.fileType,
+            fileName: data.fileName,
+            expiresAt: now + 45 * 60 * 1000,
+          });
+          if (!isLarge && (data.fileType === 'text/csv' || data.fileName?.endsWith('.csv'))) {
+            fetchCsv(data.signedUrl);
+          }
+        }
+      } catch {
+        setSignedUrlError('Network error — could not load document');
+      } finally {
+        setSignedUrlLoading(false);
+      }
     }
 
-    setSignedUrl(null);
-    setSignedUrlLoading(true);
-    try {
-      const res = await fetch(`/api/admin/documents/${doc.id}/view`);
-      if (!res.ok) {
-        const err = await res.json();
-        setSignedUrlError(err.error || 'Could not load document');
+    // Handle slide previews for large office files
+    if (isLarge) {
+      if (existingSlides?.length) {
+        await loadSlideUrls(doc.id);
       } else {
+        await convertSlides(doc.id);
+      }
+    }
+  }
+
+  async function loadSlideUrls(docId: string) {
+    try {
+      const res = await fetch(`/api/admin/documents/${docId}/slides`);
+      if (res.ok) {
         const data = await res.json();
-        setSignedUrl(data.signedUrl);
-        // Cache for 45 min (URL valid 60 min, server caches 50 min)
-        signedUrlCacheRef.current.set(doc.id, {
-          url: data.signedUrl,
-          fileType: data.fileType,
-          fileName: data.fileName,
-          expiresAt: now + 45 * 60 * 1000,
-        });
-        if (data.fileType === 'text/csv' || data.fileName?.endsWith('.csv')) {
-          fetchCsv(data.signedUrl);
-        }
+        setSlideUrls(data.urls);
+      } else {
+        setSlideError('Could not load slide previews');
       }
     } catch {
-      setSignedUrlError('Network error — could not load document');
+      setSlideError('Failed to load slide previews');
+    }
+  }
+
+  async function convertSlides(docId: string) {
+    setSlideConverting(true);
+    setSlideError('');
+    try {
+      const res = await fetch(`/api/admin/documents/${docId}/slides`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        // Persist the new metadata into the document list so re-opens skip conversion
+        setDocuments(prev =>
+          prev.map(d => d.id === docId
+            ? { ...d, metadata: { ...d.metadata, slide_previews: data.slide_previews } }
+            : d
+          )
+        );
+        setSlideUrls(data.urls);
+      } else {
+        const err = await res.json();
+        setSlideError(err.error || 'Failed to generate slide previews');
+      }
+    } catch {
+      setSlideError('Failed to generate slide previews');
     } finally {
-      setSignedUrlLoading(false);
+      setSlideConverting(false);
     }
   }
 
@@ -298,6 +376,9 @@ export default function DocumentsPage() {
     setSignedUrlError('');
     setIsFullscreen(false);
     setCsvData([]);
+    setSlideUrls([]);
+    setSlideConverting(false);
+    setSlideError('');
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
 
@@ -1215,70 +1296,109 @@ export default function DocumentsPage() {
 
           {/* Content */}
           <div className="flex-1 overflow-hidden flex items-center justify-center bg-[#111] relative">
-            {signedUrlLoading && (
-              <div className="text-center">
-                <Loader2 className="w-10 h-10 text-white/40 animate-spin mx-auto mb-3" />
-                <p className="text-white/50 text-sm">Loading document...</p>
-              </div>
+
+            {/* ── Slide viewer for large Office files (>25 MB) ─────────────── */}
+            {isLargeOfficeDoc(presentingDoc) && (
+              <>
+                {slideConverting && (
+                  <div className="text-center p-8">
+                    <Loader2 className="w-10 h-10 text-white/40 animate-spin mx-auto mb-3" />
+                    <p className="text-white font-semibold mb-1">Generating slide previews…</p>
+                    <p className="text-white/40 text-sm">This may take a few minutes for large files</p>
+                  </div>
+                )}
+                {slideError && !slideConverting && (
+                  <div className="text-center p-8">
+                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                    <p className="text-white font-semibold mb-1">Could not generate previews</p>
+                    <p className="text-white/50 text-sm mb-4">{slideError}</p>
+                    <button
+                      onClick={() => convertSlides(presentingDoc.id)}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+                {slideUrls.length > 0 && !slideConverting && (
+                  <SlideViewer urls={slideUrls} title={presentingDoc.title} />
+                )}
+                {!slideConverting && !slideError && slideUrls.length === 0 && (
+                  <div className="text-center">
+                    <Loader2 className="w-10 h-10 text-white/40 animate-spin mx-auto mb-3" />
+                    <p className="text-white/50 text-sm">Preparing slides…</p>
+                  </div>
+                )}
+              </>
             )}
 
-            {signedUrlError && (
-              <div className="text-center p-8">
-                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-                <p className="text-white font-semibold mb-1">Could not load document</p>
-                <p className="text-white/50 text-sm">{signedUrlError}</p>
-              </div>
-            )}
+            {/* ── Standard viewer for everything else ──────────────────────── */}
+            {!isLargeOfficeDoc(presentingDoc) && (
+              <>
+                {signedUrlLoading && (
+                  <div className="text-center">
+                    <Loader2 className="w-10 h-10 text-white/40 animate-spin mx-auto mb-3" />
+                    <p className="text-white/50 text-sm">Loading document...</p>
+                  </div>
+                )}
 
-            {signedUrl && !signedUrlLoading && (() => {
-              const cat = presentingDoc.file_category;
-              const mime = presentingDoc.file_type;
-              const name = presentingDoc.file_name.toLowerCase();
+                {signedUrlError && (
+                  <div className="text-center p-8">
+                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                    <p className="text-white font-semibold mb-1">Could not load document</p>
+                    <p className="text-white/50 text-sm">{signedUrlError}</p>
+                  </div>
+                )}
 
-              // ── Image ──────────────────────────────────────────────────────
-              if (cat === 'image') {
-                return (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={signedUrl} alt={presentingDoc.title}
-                    className="max-w-full max-h-full object-contain p-4" />
-                );
-              }
+                {signedUrl && !signedUrlLoading && (() => {
+                  const cat = presentingDoc.file_category;
+                  const mime = presentingDoc.file_type;
+                  const name = presentingDoc.file_name.toLowerCase();
 
-              // ── PDF ────────────────────────────────────────────────────────
-              if (mime === 'application/pdf') {
-                return (
-                  <iframe
-                    src={`${signedUrl}#toolbar=1&navpanes=0&view=FitH`}
-                    className="w-full h-full"
-                    title={presentingDoc.title}
-                    style={{ border: 'none' }}
-                  />
-                );
-              }
+                  // ── Image ────────────────────────────────────────────────
+                  if (cat === 'image') {
+                    return (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={signedUrl} alt={presentingDoc.title}
+                        className="max-w-full max-h-full object-contain p-4" />
+                    );
+                  }
 
-              // ── Office files via Microsoft Office Online viewer ────────────
-              const isOffice = (
-                mime.includes('presentationml') || mime.includes('powerpoint') ||
-                mime.includes('spreadsheetml') || mime.includes('excel') ||
-                mime.includes('wordprocessingml') || mime.includes('word') ||
-                mime.includes('opendocument') ||
-                name.endsWith('.pptx') || name.endsWith('.ppt') ||
-                name.endsWith('.xlsx') || name.endsWith('.xls') ||
-                name.endsWith('.docx') || name.endsWith('.doc') ||
-                name.endsWith('.odp') || name.endsWith('.ods') || name.endsWith('.odt')
-              );
-              if (isOffice) {
-                const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
-                return (
-                  <iframe
-                    src={officeUrl}
-                    className="w-full h-full"
-                    title={presentingDoc.title}
-                    style={{ border: 'none' }}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  />
-                );
-              }
+                  // ── PDF ──────────────────────────────────────────────────
+                  if (mime === 'application/pdf') {
+                    return (
+                      <iframe
+                        src={`${signedUrl}#toolbar=1&navpanes=0&view=FitH`}
+                        className="w-full h-full"
+                        title={presentingDoc.title}
+                        style={{ border: 'none' }}
+                      />
+                    );
+                  }
+
+                  // ── Office files via Microsoft Office Online viewer ────────
+                  const isOffice = (
+                    mime.includes('presentationml') || mime.includes('powerpoint') ||
+                    mime.includes('spreadsheetml') || mime.includes('excel') ||
+                    mime.includes('wordprocessingml') || mime.includes('word') ||
+                    mime.includes('opendocument') ||
+                    name.endsWith('.pptx') || name.endsWith('.ppt') ||
+                    name.endsWith('.xlsx') || name.endsWith('.xls') ||
+                    name.endsWith('.docx') || name.endsWith('.doc') ||
+                    name.endsWith('.odp') || name.endsWith('.ods') || name.endsWith('.odt')
+                  );
+                  if (isOffice) {
+                    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(signedUrl)}`;
+                    return (
+                      <iframe
+                        src={officeUrl}
+                        className="w-full h-full"
+                        title={presentingDoc.title}
+                        style={{ border: 'none' }}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                      />
+                    );
+                  }
 
               // ── CSV ────────────────────────────────────────────────────────
               if (mime === 'text/csv' || name.endsWith('.csv')) {
@@ -1366,13 +1486,19 @@ export default function DocumentsPage() {
                   </div>
                 </div>
               );
-            })()}
+                })()}
+              </>
+            )}
           </div>
 
           {/* Bottom bar */}
           <div className="flex items-center justify-between px-5 py-2 bg-black/80 border-t border-white/10 shrink-0">
             <span className="text-white/30 text-xs">{formatFileSize(presentingDoc.file_size)} · {presentingDoc.file_type}</span>
-            <span className="text-white/30 text-xs">Press Esc to exit</span>
+            <span className="text-white/30 text-xs">
+              {slideUrls.length > 0
+                ? `${slideUrls.length} slides · Use ← → to navigate · Esc to exit`
+                : 'Press Esc to exit'}
+            </span>
           </div>
         </div>
       )}
