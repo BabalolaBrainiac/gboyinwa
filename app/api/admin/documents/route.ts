@@ -5,15 +5,10 @@ import { getDocuments, createDocument, getDocumentCategories, searchDocuments } 
 import { uploadToR2, uploadStreamToR2, validateUpload, formatFileSize } from '@/lib/r2';
 
 export const dynamic = 'force-dynamic';
-// Allow up to 5 minutes for large file uploads on serverless
-export const maxDuration = 300;
+export const maxDuration = 300; // 5 minutes for large file uploads
 
-// Disable body parser to handle large file uploads (bypasses Vercel's default 4.5MB limit)
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Note: In Next.js App Router, body parsing is handled via Web API methods
+// (request.formData(), request.json(), etc.) - no config needed
 
 // ── In-memory category cache (categories change rarely) ──────────────────────
 let categoriesCache: { data: unknown[]; expiresAt: number } | null = null;
