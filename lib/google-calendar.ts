@@ -26,6 +26,12 @@ import { getServiceClient, hasSupabaseEnv } from './supabase';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+// Debug: Log env var status (remove after debugging)
+console.log('[Google Calendar] Config check:', { 
+  hasClientId: !!GOOGLE_CLIENT_ID, 
+  hasClientSecret: !!GOOGLE_CLIENT_SECRET 
+});
 const NEXTAUTH_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
 // Scopes needed for creating calendar events with Meet
