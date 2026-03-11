@@ -47,7 +47,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger }) {
       if (user) {
         token.userId = user.id;
         token.role = user.role;
@@ -56,12 +56,29 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    session({ session, token }) {
-      if (session.user) {
+    async session({ session, token }) {
+      if (session.user && token.userId) {
+        // Fetch fresh permissions from database on every session check
+        const supabase = getServiceClient();
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role, display_name')
+          .eq('id', token.userId)
+          .single();
+        
+        const { data: perms } = await supabase
+          .from('user_permissions')
+          .select('permission')
+          .eq('user_id', token.userId);
+        
+        const freshPermissions = (perms ?? []).map((p) => p.permission);
+        const currentRole = userData?.role ?? (token.role as string);
+        const displayName = userData?.display_name ?? (token.displayName as string) ?? '';
+        
         (session.user as { id: string }).id = token.userId as string;
-        (session.user as { role: string }).role = token.role as string;
-        (session.user as { permissions: string[] }).permissions = (token.permissions as string[]) ?? [];
-        (session.user as { displayName: string }).displayName = (token.displayName as string) ?? '';
+        (session.user as { role: string }).role = currentRole;
+        (session.user as { permissions: string[] }).permissions = freshPermissions;
+        (session.user as { displayName: string }).displayName = displayName;
       }
       return session;
     },
