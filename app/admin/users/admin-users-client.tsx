@@ -15,6 +15,7 @@ const PERMISSION_GROUPS = {
   'Documents': ['documents:view', 'documents:upload', 'documents:share', 'documents:delete', 'documents:present'],
   'Users': ['users:manage'],
   'System': ['permissions:manage'],
+  'Meetings': ['meetings:view', 'meetings:create', 'meetings:edit', 'meetings:delete', 'meetings:send_invites'],
 };
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -32,6 +33,11 @@ const PERMISSION_LABELS: Record<string, string> = {
   'documents:present': 'Present Documents',
   'users:manage': 'Manage Users',
   'permissions:manage': 'Manage Permissions',
+  'meetings:view': 'View Meetings',
+  'meetings:create': 'Create Meetings',
+  'meetings:edit': 'Edit Meetings',
+  'meetings:delete': 'Delete Meetings',
+  'meetings:send_invites': 'Send Invites',
 };
 
 type UserRow = {
