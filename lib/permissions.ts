@@ -74,6 +74,14 @@ export type DocumentPermission =
   | 'documents:delete'
   | 'documents:present';
 
+// Meeting Permissions
+export type MeetingPermission =
+  | 'meetings:view'
+  | 'meetings:create'
+  | 'meetings:edit'
+  | 'meetings:delete'
+  | 'meetings:send_invites';
+
 // All Permissions Combined
 export type Permission =
   | ContentPermission
@@ -84,7 +92,8 @@ export type Permission =
   | CampaignPermission
   | BlogSubscriptionPermission
   | DocumentPermission
-  | AuditPermission;
+  | AuditPermission
+  | MeetingPermission;
 
 // =============================================================================
 // ALL PERMISSIONS ARRAY
@@ -144,6 +153,12 @@ export const ALL_PERMISSIONS: Permission[] = [
   // Audit
   'audit:view',
   'audit:export',
+  // Meetings
+  'meetings:view',
+  'meetings:create',
+  'meetings:edit',
+  'meetings:delete',
+  'meetings:send_invites',
 ];
 
 // =============================================================================
@@ -272,6 +287,18 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       'audit:export',
     ],
   },
+  {
+    key: 'meetings',
+    label: 'Meetings',
+    description: 'Create and manage team meetings with Google Meet',
+    permissions: [
+      'meetings:view',
+      'meetings:create',
+      'meetings:edit',
+      'meetings:delete',
+      'meetings:send_invites',
+    ],
+  },
 ];
 
 // =============================================================================
@@ -333,6 +360,12 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; description:
   // Audit
   'audit:view': { label: 'View Audit Logs', description: 'View system audit logs and activity history' },
   'audit:export': { label: 'Export Audit Logs', description: 'Export audit logs for compliance' },
+  // Meetings
+  'meetings:view': { label: 'View Meetings', description: 'View scheduled meetings' },
+  'meetings:create': { label: 'Create Meetings', description: 'Create new meetings with Google Meet' },
+  'meetings:edit': { label: 'Edit Meetings', description: 'Edit meeting details' },
+  'meetings:delete': { label: 'Delete Meetings', description: 'Delete meetings' },
+  'meetings:send_invites': { label: 'Send Invites', description: 'Send meeting invitations to staff' },
 };
 
 // =============================================================================

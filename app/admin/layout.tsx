@@ -17,6 +17,7 @@ import {
   BarChart3,
   FolderOpen,
   UserCircle,
+  Video,
 } from 'lucide-react';
 import { 
   canViewCommunications, 
@@ -71,6 +72,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const canViewMetricsDash = canViewDashboard(role, permissions);
   const canViewDocs = hasPermission(role, permissions, 'documents:view');
   const canViewAudit = hasPermission(role, permissions, 'audit:view');
+  const canViewMeetings = hasPermission(role, permissions, 'meetings:view') || hasPermission(role, permissions, 'meetings:create');
   
   // All permission checks in one object for the sidebar
   const permissionsMap = {
@@ -83,6 +85,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     analytics: canViewMetricsDash,
     documents: canViewDocs,
     audit: canViewAudit,
+    meetings: canViewMeetings,
   };
 
   return (
@@ -206,6 +209,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               icon={<Shield className="w-4 h-4" />}
               label="Audit Logs"
               allowed={permissionsMap.audit}
+            />
+            
+            {/* Meetings - shows lock icon if no permission */}
+            <SidebarNavItem 
+              href="/admin/meetings" 
+              icon={<Video className="w-4 h-4" />}
+              label="Meetings"
+              allowed={permissionsMap.meetings}
             />
           </nav>
           

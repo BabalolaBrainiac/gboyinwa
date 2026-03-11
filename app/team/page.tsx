@@ -116,13 +116,14 @@ export default async function TeamPage() {
                       <div className={`absolute -inset-1 rounded-full bg-gradient-to-tr ${m.gradient} opacity-0 group-hover:opacity-60 transition-opacity duration-400 blur-md`} />
                       {m.image_url ? (
                         <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-white dark:border-brand-black shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                          <Image 
-                            src={m.image_url} 
-                            alt={m.displayName} 
-                            fill 
-                            className="object-cover group-hover:scale-110 transition-transform duration-300" 
+                          <Image
+                            src={m.image_url}
+                            alt={m.displayName}
+                            fill
+                            className="object-cover group-hover:scale-110 transition-transform duration-300"
                             sizes="96px"
                             priority={i < 3}
+                            unoptimized
                           />
                         </div>
                       ) : (

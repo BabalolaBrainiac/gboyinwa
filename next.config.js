@@ -5,9 +5,14 @@ const nextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
     remotePatterns: [
+      // Supabase storage
       { protocol: 'https', hostname: '**.supabase.co', pathname: '/storage/**' },
+      // Unsplash
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
-      { protocol: 'https', hostname: 'pub-0124c2167358caa5855f58febceadbe8.r2.dev', pathname: '/**' },
+      // Cloudflare R2 — public bucket URLs (pub-*.r2.dev)
+      { protocol: 'https', hostname: '**.r2.dev', pathname: '/**' },
+      // Cloudflare R2 — direct storage / signed URLs
+      { protocol: 'https', hostname: '**.r2.cloudflarestorage.com', pathname: '/**' },
     ],
   },
 
