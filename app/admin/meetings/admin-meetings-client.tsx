@@ -600,21 +600,21 @@ export function AdminMeetingsClient({ permissions }: { permissions: Permissions 
             {(!googleStatus?.isConnected || !formData.create_calendar_event) && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-brand-black/70 dark:text-brand-yellow/70 mb-1">
-                  Google Meet Link {googleStatus?.isConnected ? '(Optional - will be auto-generated)' : '*'}
+                  Google Meet Link *
                 </label>
                 <input
                   type="url"
                   value={formData.meet_link}
                   onChange={(e) => setFormData({ ...formData, meet_link: e.target.value })}
-                  required={!googleStatus?.isConnected}
+                  required
                   placeholder="https://meet.google.com/abc-defg-hij"
                   className="w-full px-4 py-2 rounded-lg border border-brand-green/30 dark:border-brand-yellow/30 bg-white dark:bg-brand-black focus:outline-none focus:ring-2 focus:ring-brand-green dark:focus:ring-brand-yellow"
                 />
-                {!googleStatus?.isConnected && (
-                  <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 mt-1">
-                    Create a meeting in Google Calendar and paste the Meet link here, or connect Google Calendar above.
-                  </p>
-                )}
+                <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 mt-1">
+                  {googleStatus?.isConnected 
+                    ? 'Auto-generation is disabled. Please paste a Meet link manually.'
+                    : 'Create a meeting in Google Calendar and paste the Meet link here, or connect Google Calendar above.'}
+                </p>
               </div>
             )}
 

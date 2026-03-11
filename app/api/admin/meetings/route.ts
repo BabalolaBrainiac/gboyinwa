@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       
       if (!isGoogleConnected) {
         return NextResponse.json(
-          { error: 'Google Calendar not connected. Please connect your Google account first.' },
+          { error: 'Google Calendar not connected. Please connect your Google account in the meetings page, or provide a Meet link manually.' },
           { status: 400 }
         );
       }
