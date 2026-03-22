@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { getPostBySlug } from '@/lib/blog';
-import { ArrowLeft, Calendar, Clock, Share2, User, Trophy, Camera, Users, MapPin, Award } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, Trophy, Camera, Users, MapPin, Award } from 'lucide-react';
 import { ShareButton } from '@/components/share-button';
 import { getServiceClient } from '@/lib/supabase';
 
@@ -29,11 +29,10 @@ async function trackPostView(postId: string) {
     const supabase = getServiceClient();
     await supabase.rpc('increment_post_view', { p_post_id: postId });
   } catch {
-    // Silently fail - don't block page render for view tracking
+    // Silently fail
   }
 }
 
-// Default grant post content
 const GRANT_POST_SLUG = 'gboyinde-grant-magic-in-eko-grey';
 
 const GRANT_POST_CONTENT = {
@@ -101,30 +100,27 @@ Are you ready to capture the magic in Èkó Grey? We can't wait to see your visi
 *The Gbóyindé Grant is an initiative of Gbóyinwá Media, a Lagos-based documentary and storytelling company dedicated to amplifying authentic Nigerian voices.*`,
 };
 
-export default async function BlogPostPage({ params }: Props) {
+export default async function LetterPage({ params }: Props) {
   const { slug } = await params;
-  
-  // Check if this is the default grant post
+
   let post = await getPostBySlug(slug);
-  
+
   if (!post && slug === GRANT_POST_SLUG) {
     post = GRANT_POST_CONTENT as any;
   }
-  
+
   if (!post) notFound();
-  
-  // Track view for this post (only for real posts, not default content)
+
   if ((post as { id?: string }).id && (post as { id?: string }).id !== 'gboyinde-grant-launch') {
     await trackPostView((post as { id: string }).id);
   }
-  
+
   const author = await getPostAuthor((post as { author_id?: string }).author_id || null);
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1">
-        {/* Hero Image */}
         {post.cover_url && (
           <div className="relative w-full h-[35vh] md:h-[45vh]">
             <Image
@@ -150,7 +146,6 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        {/* Content */}
         <article className="py-10 px-4">
           <div className="max-w-3xl mx-auto">
             {!post.cover_url && (
@@ -162,11 +157,11 @@ export default async function BlogPostPage({ params }: Props) {
                 Back to Letters
               </Link>
             )}
-            
-            <h1 className={`font-bold text-brand-green dark:text-brand-yellow mb-4 ${post.cover_url ? 'text-2xl md:text-3xl' : 'text-2xl md:text-3xl'}`}>
+
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-green dark:text-brand-yellow mb-4">
               {post.title}
             </h1>
-            
+
             <div className="flex flex-wrap items-center gap-4 mb-6 pb-6 border-b border-brand-green/10 dark:border-brand-yellow/10">
               {post.published_at && (
                 <span className="flex items-center gap-1 text-sm text-brand-black/60 dark:text-brand-yellow/60">
@@ -196,14 +191,13 @@ export default async function BlogPostPage({ params }: Props) {
                 <ShareButton title={post.title} />
               </div>
             </div>
-            
+
             {post.excerpt && (
               <p className="text-lg text-brand-black/80 dark:text-brand-yellow/80 mb-6 font-medium leading-relaxed">
                 {post.excerpt}
               </p>
             )}
 
-            {/* Grant Highlights */}
             {slug === GRANT_POST_SLUG && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
                 <div className="glass-card rounded-xl p-4 text-center">
@@ -228,7 +222,7 @@ export default async function BlogPostPage({ params }: Props) {
                 </div>
               </div>
             )}
-            
+
             <div className="prose dark:prose-invert max-w-none text-brand-black/80 dark:text-brand-yellow/80 whitespace-pre-wrap leading-relaxed text-sm">
               {post.body.split('\n').map((paragraph: string, idx: number) => {
                 if (paragraph.startsWith('## ')) {
@@ -250,7 +244,6 @@ export default async function BlogPostPage({ params }: Props) {
               })}
             </div>
 
-            {/* CTA for grant post */}
             {slug === GRANT_POST_SLUG && (
               <div className="mt-10 p-6 rounded-2xl bg-gradient-to-br from-brand-green to-brand-violet">
                 <div className="flex items-center gap-3 mb-3">
@@ -260,7 +253,7 @@ export default async function BlogPostPage({ params }: Props) {
                 <p className="text-white/80 text-sm mb-4">
                   Learn more about The Gbóyindé Grant and submit your application today.
                 </p>
-                <Link 
+                <Link
                   href="/events/gboyinde-grant-young-documentary-filmmakers"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-yellow text-brand-black font-semibold text-sm hover:bg-brand-yellow/90 transition-all"
                 >
@@ -272,7 +265,6 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         </article>
 
-        {/* Related/Navigation */}
         <section className="py-10 px-4 border-t border-brand-green/10 dark:border-brand-yellow/10">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
             <Link

@@ -13,7 +13,7 @@ interface SubscriptionFormProps {
 export function SubscriptionForm({ 
   className = '',
   variant = 'card',
-  title = 'Subscribe to Our Blog',
+  title = 'Subscribe to Letters',
   description = 'Get the latest updates and news delivered to your inbox.'
 }: SubscriptionFormProps) {
   const [email, setEmail] = useState('');

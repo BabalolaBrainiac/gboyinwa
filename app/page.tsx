@@ -46,6 +46,29 @@ export default async function HomePage() {
                   gbóyinwá
                 </h1>
 
+                {/* Join the Mission */}
+                <div className="flex flex-wrap gap-2 mb-6 animate-fade-in-up animate-delay-100">
+                  <Link
+                    href="/join/hiring"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-brand-green/30 dark:border-brand-yellow/30 text-brand-green dark:text-brand-yellow text-xs font-semibold hover:bg-brand-green/8 dark:hover:bg-brand-yellow/8 transition-all"
+                  >
+                    Hiring
+                  </Link>
+                  <Link
+                    href="/join/volunteer"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-brand-green/30 dark:border-brand-yellow/30 text-brand-green dark:text-brand-yellow text-xs font-semibold hover:bg-brand-green/8 dark:hover:bg-brand-yellow/8 transition-all"
+                  >
+                    Volunteer
+                  </Link>
+                  <Link
+                    href="/join/partner"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-brand-green/30 dark:border-brand-yellow/30 text-brand-green dark:text-brand-yellow text-xs font-semibold hover:bg-brand-green/8 dark:hover:bg-brand-yellow/8 transition-all"
+                  >
+                    Partner &amp; Invest
+                  </Link>
+                  <span className="text-xs text-brand-black/40 dark:text-brand-yellow/40 self-center pl-1 italic font-medium">— join the mission</span>
+                </div>
+
                 <p className="text-lg text-brand-black/60 dark:text-brand-yellow/60 mb-8 max-w-md leading-relaxed animate-fade-in-up animate-delay-200">
                   Amplifying authentic voices and hidden narratives. We invest in the next generation of Nigerian storytellers.
                 </p>
@@ -136,8 +159,8 @@ export default async function HomePage() {
           
           <div className="relative max-w-6xl mx-auto px-5 sm:px-8 py-16 md:py-24">
             <AnimateIn>
-              <div className="grid lg:grid-cols-2 gap-10 items-center">
-                <div className="order-2 lg:order-1">
+              <div className="grid dark:lg:grid-cols-2 gap-10 items-center">
+                <div className="order-2 lg:order-1 hidden dark:block">
                   <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl group">
                     <Image
                       src="/images/logo-full.png"
@@ -158,7 +181,7 @@ export default async function HomePage() {
 
                 <div className="order-1 lg:order-2">
                   <span className="inline-block px-3 py-1 rounded-full bg-brand-yellow/20 text-brand-yellow text-xs font-bold tracking-widest uppercase mb-4">
-                    Featured Initiative
+                    Featured Program
                   </span>
                   <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 leading-tight">
                     The Gbóyindé Grant

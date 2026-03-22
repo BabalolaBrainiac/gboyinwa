@@ -49,8 +49,10 @@ export function Header() {
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
     { href: '/events', label: 'Events' },
+    { href: '/programs', label: 'Programs' },
     { href: '/team', label: 'Team' },
-    { href: '/blog', label: 'Blog' },
+    { href: '/letters', label: 'Letters' },
+    { href: '/contact', label: 'Contact' },
   ];
 
   return (

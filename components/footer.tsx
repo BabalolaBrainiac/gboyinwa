@@ -9,11 +9,15 @@ export function Footer() {
       { label: 'Home', href: '/' },
       { label: 'About', href: '/about' },
       { label: 'Events', href: '/events' },
+      { label: 'Programs', href: '/programs' },
       { label: 'Team', href: '/team' },
-      { label: 'Blog', href: '/blog' },
+      { label: 'Letters', href: '/letters' },
+      { label: 'Archive', href: '/archive' },
+      { label: 'Contact', href: '/contact' },
     ],
     resources: [
       { label: 'Gbóyindé Grant', href: '/events/gboyinde-grant-young-documentary-filmmakers' },
+      { label: 'Join the Mission', href: '/join' },
     ],
   };
 
@@ -36,6 +40,9 @@ export function Footer() {
                 </span>
               </div>
             </Link>
+            <p className="text-xs font-medium italic text-brand-green/60 dark:text-brand-yellow/50 mb-4">
+              &hellip;for the artists, by the artists
+            </p>
             <p className="text-brand-black/70 dark:text-brand-yellow/70 mb-6 max-w-sm">
               Documentary and storytelling from Lagos. Amplifying authentic voices 
               and hidden narratives since 2024.
@@ -63,7 +70,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.navigation.map((link) => (
                 <li key={link.href}>
-                  <Link 
+                  <Link
                     href={link.href}
                     className="text-sm text-brand-black/70 dark:text-brand-yellow/70 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
                   >
@@ -74,23 +81,38 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Connect */}
+          {/* Get Involved + Connect */}
           <div>
             <h3 className="font-bold text-brand-green dark:text-brand-yellow mb-4">
+              Get Involved
+            </h3>
+            <ul className="space-y-3 mb-6">
+              {footerLinks.resources.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-brand-black/70 dark:text-brand-yellow/70 hover:text-brand-green dark:hover:text-brand-yellow transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <h3 className="font-bold text-brand-green dark:text-brand-yellow mb-3">
               Connect
             </h3>
-            <div className="flex gap-4">
-              <a 
-                href="https://instagram.com/gboyinwa" 
-                target="_blank" 
+            <div className="flex gap-3">
+              <a
+                href="https://instagram.com/gboyinwa"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-yellow/10 flex items-center justify-center text-brand-green dark:text-brand-yellow hover:bg-brand-green hover:text-white dark:hover:bg-brand-yellow dark:hover:text-brand-black transition-all"
               >
                 <Instagram className="w-5 h-5" />
               </a>
-              <a 
-                href="https://twitter.com/gboyinwa" 
-                target="_blank" 
+              <a
+                href="https://twitter.com/gboyinwa"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-brand-yellow/10 flex items-center justify-center text-brand-green dark:text-brand-yellow hover:bg-brand-green hover:text-white dark:hover:bg-brand-yellow dark:hover:text-brand-black transition-all"
               >

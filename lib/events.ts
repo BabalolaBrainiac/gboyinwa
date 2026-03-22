@@ -1,5 +1,19 @@
 import { getServiceClient, hasSupabaseEnv } from './supabase';
 
+function sanitizeImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeEvent(event: Event): Event {
+  return { ...event, image_url: sanitizeImageUrl(event.image_url) };
+}
+
 export type Event = {
   id: string;
   title: string;
@@ -27,7 +41,7 @@ export async function getFeaturedEvent(): Promise<Event | null> {
     .order('start_date', { ascending: false })
     .limit(1)
     .single();
-  return data;
+  return data ? sanitizeEvent(data) : null;
 }
 
 export async function getEvents(): Promise<Event[]> {
@@ -37,12 +51,12 @@ export async function getEvents(): Promise<Event[]> {
     .select('*')
     .eq('published', true)
     .order('start_date', { ascending: false });
-  return data ?? [];
+  return (data ?? []).map(sanitizeEvent);
 }
 
 export async function getEventBySlug(slug: string): Promise<Event | null> {
   if (!hasSupabaseEnv()) return null;
   const supabase = getServiceClient();
   const { data } = await supabase.from('events').select('*').eq('slug', slug).eq('published', true).single();
-  return data;
+  return data ? sanitizeEvent(data) : null;
 }

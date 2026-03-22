@@ -57,12 +57,12 @@ export function JoinMovement() {
                     View Events
                   </Link>
                   
-                  <Link 
-                    href="/blog" 
+                  <Link
+                    href="/letters"
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 text-white font-semibold text-sm border border-white/20 hover:bg-white/20 active:scale-[0.98] transition-all"
                   >
                     <BookOpen className="w-4 h-4" />
-                    Read Blog
+                    Subscribe to Letters
                   </Link>
                   
                   <button

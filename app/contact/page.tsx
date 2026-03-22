@@ -184,15 +184,26 @@ export default function ContactPage() {
             </AnimateIn>
 
             {/* Contact Info Cards */}
-            <div className="grid sm:grid-cols-2 gap-4 mt-6">
+            <div className="grid sm:grid-cols-3 gap-4 mt-6">
               <AnimateIn delay={100}>
                 <div className="glass-card rounded-2xl p-5 text-center">
                   <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-brand-yellow/10 flex items-center justify-center">
                     <Mail className="w-5 h-5 text-brand-yellow" />
                   </div>
-                  <h3 className="text-sm font-semibold text-brand-green dark:text-brand-yellow mb-1">Email Us</h3>
+                  <h3 className="text-sm font-semibold text-brand-green dark:text-brand-yellow mb-1">Email</h3>
                   <a href="mailto:hello@gboyinwa.com" className="text-sm text-brand-black/60 dark:text-brand-yellow/60 hover:text-brand-green dark:hover:text-brand-yellow transition-colors">
                     hello@gboyinwa.com
+                  </a>
+                </div>
+              </AnimateIn>
+              <AnimateIn delay={150}>
+                <div className="glass-card rounded-2xl p-5 text-center">
+                  <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-brand-violet/10 flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-brand-violet" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-brand-green dark:text-brand-yellow mb-1">Phone</h3>
+                  <a href="tel:+2340000000000" className="text-sm text-brand-black/60 dark:text-brand-yellow/60 hover:text-brand-green dark:hover:text-brand-yellow transition-colors">
+                    +234 000 000 0000
                   </a>
                 </div>
               </AnimateIn>
@@ -204,8 +215,9 @@ export default function ContactPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-sm font-semibold text-brand-green dark:text-brand-yellow mb-1">Location</h3>
-                  <p className="text-sm text-brand-black/60 dark:text-brand-yellow/60">
+                  <h3 className="text-sm font-semibold text-brand-green dark:text-brand-yellow mb-1">Post Address</h3>
+                  <p className="text-sm text-brand-black/60 dark:text-brand-yellow/60 leading-snug">
+                    Gbóyinwá Media LTD<br />
                     Lagos, Nigeria
                   </p>
                 </div>
