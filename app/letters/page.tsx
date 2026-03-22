@@ -42,10 +42,9 @@ export default async function LettersPage() {
             <h1 className="text-4xl md:text-5xl font-bold text-brand-green dark:text-brand-yellow mb-3">
               Letters
             </h1>
-            <p className="text-base text-brand-black/60 dark:text-brand-yellow/60 max-w-xl mx-auto mb-6">
+            <p className="text-base text-brand-black/60 dark:text-brand-yellow/60 max-w-xl mx-auto">
               Stories, updates, and behind-the-scenes dispatches from the Gbóyinwá team and community.
             </p>
-            <SubscriptionForm variant="inline" title="Subscribe to Letters" />
           </div>
         </section>
 
