@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AnimateIn } from '@/components/animate-in';
-import { Eye, Target, Heart, ArrowRight, Users, Globe, Clapperboard } from 'lucide-react';
+import { Eye, Target, Heart, ArrowRight, Users, Sparkles, Fingerprint, DoorOpen } from 'lucide-react';
 
 export const metadata = {
   title: 'About | Gbóyinwá Media',
@@ -28,11 +28,10 @@ export default function AboutPage() {
                 About Gbóyinwá Media
               </h1>
               <p className="text-lg text-brand-black/60 dark:text-brand-yellow/60 leading-relaxed mb-4">
-                We are a Lagos-based documentary and storytelling company amplifying authentic voices
-                and hidden narratives. We invest in the next generation of Nigerian storytellers.
+                We are a Lagos-based company fashioning a beautiful world led by artists.
               </p>
               <p className="text-sm font-medium italic text-brand-green/60 dark:text-brand-yellow/50">
-                &hellip;for the artists, by the artists
+                &hellip;for artists, by artists
               </p>
             </AnimateIn>
           </div>
@@ -54,14 +53,8 @@ export default function AboutPage() {
                     Our Vision
                   </span>
                   <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 leading-snug">
-                    A world where Nigerian stories shape global culture
+                    To create a company devoted to the needs of the artist in the shaping of a beautiful world.
                   </h2>
-                  <p className="text-white/65 leading-relaxed text-sm">
-                    We envision a future in which authentic Nigerian voices — drawn from every corner
-                    of Lagos and beyond — are heard, celebrated, and preserved for generations.
-                    A future where young artists have the tools, platform, and freedom to tell
-                    the stories that matter most to their communities.
-                  </p>
                 </div>
               </div>
             </AnimateIn>
@@ -78,14 +71,8 @@ export default function AboutPage() {
                     Our Mission
                   </span>
                   <h2 className="text-2xl md:text-3xl font-bold text-brand-green dark:text-brand-yellow mb-4 leading-snug">
-                    To invest in storytellers who illuminate the hidden magic of everyday life
+                    We strive to meet every artist at the point of their need.
                   </h2>
-                  <p className="text-brand-black/60 dark:text-brand-yellow/60 leading-relaxed text-sm">
-                    Gbóyinwá Media funds, mentors, and platforms emerging documentary filmmakers
-                    aged 16–35. We believe documentary storytelling has the power to capture truth,
-                    celebrate culture, challenge injustice, and inspire lasting change — and we exist
-                    to make that power accessible to every young artist with a story worth telling.
-                  </p>
                 </div>
               </div>
             </AnimateIn>
@@ -104,22 +91,27 @@ export default function AboutPage() {
               </h2>
             </AnimateIn>
 
-            <div className="grid md:grid-cols-3 gap-5">
+            <div className="grid md:grid-cols-2 gap-5">
               {[
                 {
-                  icon: Clapperboard,
-                  title: 'Authenticity',
-                  desc: 'We champion stories told by insiders — filmmakers who live the narratives they document.',
+                  icon: Sparkles,
+                  title: 'Beauty',
+                  desc: 'We believe artists are at the forefront of the creation of a beautiful world for all.',
                 },
                 {
                   icon: Users,
                   title: 'Community',
-                  desc: 'We build networks of artists who support, challenge, and elevate one another.',
+                  desc: 'We believe in building a lattice of artists who inspire other artists.',
                 },
                 {
-                  icon: Globe,
-                  title: 'Global Reach',
-                  desc: 'We take Lagos to the world — ensuring Nigerian narratives reach international stages.',
+                  icon: Fingerprint,
+                  title: 'Authenticity',
+                  desc: 'We believe in art born from the original perspective of the artist.',
+                },
+                {
+                  icon: DoorOpen,
+                  title: 'Access',
+                  desc: 'We believe that beautiful art can and should be made and enjoyed by all.',
                 },
               ].map(({ icon: Icon, title, desc }, i) => (
                 <AnimateIn key={i} delay={i * 100}>

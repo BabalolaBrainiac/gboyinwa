@@ -15,7 +15,7 @@ const TEAM_MEMBERS = [
     bio: 'Leading the vision and driving the mission forward.',
     gradient: 'from-brand-green to-brand-violet',
     initials: 'OC',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/oluwatimilehin.jpg',
+    image_url: '/images/team/oluwatimilehin.jpg',
   },
   {
     id: 'daniel-adeyinka',
@@ -25,7 +25,7 @@ const TEAM_MEMBERS = [
     bio: 'Turning complex narratives into clarity. Words are his currency.',
     gradient: 'from-brand-orange to-brand-yellow',
     initials: 'DA',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/daniel.jpg',
+    image_url: '/images/team/daniel.jpg',
   },
   {
     id: 'tari-akinnukawe',
@@ -35,7 +35,7 @@ const TEAM_MEMBERS = [
     bio: 'Protecting the work, enabling the vision.',
     gradient: 'from-brand-violet to-brand-orange',
     initials: 'TA',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/tari.jpg',
+    image_url: '/images/team/tari.jpg',
   },
   {
     id: 'opeyemi-babalola',
@@ -45,7 +45,7 @@ const TEAM_MEMBERS = [
     bio: 'Building the technology that powers our storytelling.',
     gradient: 'from-brand-yellow to-brand-orange',
     initials: 'OB',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/opeyemi.jpg',
+    image_url: null,
   },
   {
     id: 'karamat-eko',
@@ -55,7 +55,7 @@ const TEAM_MEMBERS = [
     bio: 'Moving the pieces so everyone else can create.',
     gradient: 'from-brand-green to-brand-violet',
     initials: 'KE',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/karamat.jpg',
+    image_url: '/images/team/karamat.jpg',
   },
   {
     id: 'victoria-ogunwemimo',
@@ -65,7 +65,7 @@ const TEAM_MEMBERS = [
     bio: 'Here to make the magic happen.',
     gradient: 'from-brand-green to-brand-yellow',
     initials: 'VO',
-    image_url: 'https://pub-0124c2167358caa5855f58febceadbe8.r2.dev/assets/team/victoria.jpg',
+    image_url: '/images/team/victoria.jpg',
   },
 ];
 

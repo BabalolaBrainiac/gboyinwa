@@ -60,7 +60,7 @@ export default function JoinPage() {
                 There are many ways to be part of the Gbóyinwá story.
               </p>
               <p className="text-sm font-medium italic text-brand-green/60 dark:text-brand-yellow/50">
-                &hellip;for the artists, by the artists
+                &hellip;for artists, by artists
               </p>
             </AnimateIn>
           </div>

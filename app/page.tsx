@@ -6,8 +6,8 @@ import { AnimateIn } from '@/components/animate-in';
 import { JoinMovement } from '@/components/join-movement';
 import { getFeaturedEvent } from '@/lib/events';
 import {
-  ArrowRight, Sparkles, Users, Globe,
-  Clapperboard, Camera, Palette, Trophy, Calendar, MapPin,
+  ArrowRight, Sparkles, Users, Globe, Trophy, Camera,
+  Building2, GraduationCap, Handshake, Heart, Calendar, MapPin,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +33,7 @@ export default async function HomePage() {
           </div>
 
           <div className="relative w-full max-w-6xl mx-auto px-5 sm:px-8 py-16 md:py-24">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-
-              {/* Left: text */}
+            <div className="max-w-2xl">
               <div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-yellow/15 dark:bg-brand-yellow/10 text-brand-green dark:text-brand-yellow text-xs font-bold tracking-widest uppercase mb-6 animate-fade-in">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -75,77 +73,18 @@ export default async function HomePage() {
 
                 <div className="flex flex-wrap gap-3 animate-fade-in-up animate-delay-300">
                   <Link
-                    href="/events"
+                    href="/programs"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-brand-green dark:bg-brand-yellow text-white dark:text-brand-black font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-brand-green/20 dark:shadow-brand-yellow/10"
                   >
-                    Explore Events
+                    Explore Programs
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link
-                    href="/team"
+                    href="/join"
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl border-2 border-brand-green/20 dark:border-brand-yellow/20 text-brand-green dark:text-brand-yellow font-bold text-sm hover:border-brand-green dark:hover:border-brand-yellow transition-all"
                   >
-                    Meet the Team
+                    Join the Mission
                   </Link>
-                </div>
-              </div>
-
-              {/* Right: floating stats */}
-              <div className="relative h-[380px] hidden lg:block animate-fade-in animate-delay-200">
-                {/* Center floating card */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 animate-float">
-                  <div className="w-full h-full rounded-3xl bg-gradient-to-br from-brand-green to-brand-violet p-[2px] shadow-2xl shadow-brand-green/20">
-                    <div className="w-full h-full rounded-3xl bg-white dark:bg-brand-black flex flex-col items-center justify-center gap-2">
-                      <div className="relative w-16 h-16">
-                        <Image src="/images/logomark.png" alt="Gbóyinwá" fill className="object-contain dark:hidden" sizes="64px" />
-                        <Image src="/images/logomark-yellow.png" alt="Gbóyinwá" fill className="object-contain hidden dark:block" sizes="64px" />
-                      </div>
-                      <span className="text-sm font-bold text-brand-green dark:text-brand-yellow">gbóyinwá</span>
-                      <span className="text-xs text-brand-black/40 dark:text-brand-yellow/40 font-medium">Media</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Films Funded */}
-                <div className="absolute top-0 right-2 w-40 animate-fade-in-up animate-delay-200">
-                  <div className="glass-card rounded-2xl p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-brand-orange/10 flex items-center justify-center">
-                        <Clapperboard className="w-5 h-5 text-brand-orange" />
-                      </div>
-                      <span className="text-2xl font-bold text-brand-green dark:text-brand-yellow">5</span>
-                    </div>
-                    <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 font-semibold">Films Funded</p>
-                    <div className="mt-2 h-1 bg-brand-green/10 dark:bg-brand-yellow/10 rounded-full overflow-hidden">
-                      <div className="h-full w-full bg-gradient-to-r from-brand-yellow to-brand-orange rounded-full" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Youth Empowerment */}
-                <div className="absolute bottom-2 left-0 w-44 animate-fade-in-up animate-delay-300">
-                  <div className="glass-card rounded-2xl p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl bg-brand-violet/10 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-brand-violet" />
-                      </div>
-                      <div>
-                        <span className="text-xl font-bold text-brand-green dark:text-brand-yellow">16-35</span>
-                        <p className="text-xs text-brand-black/40 dark:text-brand-yellow/40">years</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-brand-black/50 dark:text-brand-yellow/50 font-semibold">Youth Empowerment</p>
-                  </div>
-                </div>
-
-                {/* Trophy badge */}
-                <div className="absolute bottom-16 right-0 animate-bounce-subtle">
-                  <div className="w-16 h-16 rounded-full bg-brand-yellow flex items-center justify-center shadow-lg shadow-brand-yellow/20">
-                    <div className="text-center">
-                      <Trophy className="w-5 h-5 text-brand-black mx-auto" />
-                      <span className="text-[10px] font-bold text-brand-black block">₦55M</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -226,41 +165,58 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ─── OUR MISSION ─── */}
+        {/* ─── OUR WORK ─── */}
         <section className="section-padding">
           <div className="max-w-6xl mx-auto">
             <AnimateIn className="text-center mb-10">
               <span className="inline-block px-3 py-1 rounded-full bg-brand-green/8 dark:bg-brand-yellow/8 text-brand-green dark:text-brand-yellow text-xs font-bold tracking-widest uppercase mb-3">
-                Our Mission
+                Our Work
               </span>
               <h2 className="text-3xl md:text-4xl font-bold text-brand-green dark:text-brand-yellow mb-3">
-                Preserving Stories, Empowering Voices
+                What We Do
               </h2>
               <p className="text-brand-black/50 dark:text-brand-yellow/50 max-w-xl mx-auto leading-relaxed text-sm">
-                We believe in the transformative power of documentary filmmaking to capture truth,
-                celebrate culture, and inspire change.
+                We strive to meet every artist at the point of their need.
               </p>
             </AnimateIn>
 
             <div className="grid md:grid-cols-3 gap-4">
               {[
                 {
-                  icon: Camera,
-                  title: 'Documentary Excellence',
-                  desc: 'Professional-grade production support for authentic storytelling that preserves cultural heritage.',
+                  icon: Building2,
+                  title: 'Spaces & Residencies',
+                  desc: 'Affordable studios, exhibition venues, and residencies enabling sustainable creative production.',
                   gradient: 'from-brand-orange to-brand-yellow',
                 },
                 {
-                  icon: Palette,
-                  title: 'Creative Empowerment',
-                  desc: 'Nurturing young Nigerian filmmakers aged 16-35 with funding, mentorship, and platforms.',
+                  icon: Globe,
+                  title: 'Online Ecosystem',
+                  desc: 'Online ecosystem for creating, collaborating, showcasing and e-commerce.',
+                  gradient: 'from-brand-green to-brand-yellow',
+                },
+                {
+                  icon: GraduationCap,
+                  title: 'Programs & Labs',
+                  desc: 'Structured programs, accelerator labs, and expert-led masterclasses for creative entrepreneurship.',
                   gradient: 'from-brand-violet to-brand-green',
                 },
                 {
-                  icon: Globe,
-                  title: 'Global Storytelling',
-                  desc: 'Taking authentic Lagos narratives to international film festivals and audiences worldwide.',
-                  gradient: 'from-brand-green to-brand-yellow',
+                  icon: Handshake,
+                  title: 'Partnerships & Grants',
+                  desc: 'Partnerships, grants, and global collaborations to connect creatives to buyers, brands, and investors.',
+                  gradient: 'from-brand-green to-brand-violet',
+                },
+                {
+                  icon: Users,
+                  title: 'Community Events',
+                  desc: 'Community events to facilitate collaboration and network expansion.',
+                  gradient: 'from-brand-yellow to-brand-orange',
+                },
+                {
+                  icon: Heart,
+                  title: 'Artist Wellness',
+                  desc: 'On-site lounges, therapy sessions addressing artist mental health.',
+                  gradient: 'from-brand-orange to-brand-violet',
                 },
               ].map(({ icon: Icon, title, desc, gradient }, i) => (
                 <AnimateIn key={i} delay={i * 100}>

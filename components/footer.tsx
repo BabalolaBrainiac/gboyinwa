@@ -41,11 +41,11 @@ export function Footer() {
               </div>
             </Link>
             <p className="text-xs font-medium italic text-brand-green/60 dark:text-brand-yellow/50 mb-4">
-              &hellip;for the artists, by the artists
+              &hellip;for artists, by artists
             </p>
             <p className="text-brand-black/70 dark:text-brand-yellow/70 mb-6 max-w-sm">
-              Documentary and storytelling from Lagos. Amplifying authentic voices 
-              and hidden narratives since 2024.
+              Documentary and storytelling from Lagos. Amplifying authentic voices
+              and hidden narratives since 2025.
             </p>
             <div className="space-y-3">
               <a 

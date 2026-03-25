@@ -40,7 +40,7 @@ export function JoinMovement() {
                 </span>
                 
                 <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                  Join the Movement
+                  Join the Mission
                 </h2>
                 
                 <p className="text-white/60 max-w-lg mx-auto mb-8 leading-relaxed text-sm">
@@ -49,12 +49,12 @@ export function JoinMovement() {
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Link 
-                    href="/events" 
+                  <Link
+                    href="/programs"
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-yellow text-brand-black font-semibold text-sm hover:bg-brand-yellow/90 active:scale-[0.98] transition-all shadow-lg shadow-brand-yellow/20"
                   >
                     <Calendar className="w-4 h-4" />
-                    View Events
+                    View Programs
                   </Link>
                   
                   <Link
